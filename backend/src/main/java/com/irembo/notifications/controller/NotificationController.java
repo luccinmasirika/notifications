@@ -1,48 +1,60 @@
 package com.irembo.notifications.controller;
 
+import com.irembo.notifications.model.dto.NotificationRequest;
+import com.irembo.notifications.model.dto.NotificationResponse;
+import com.irembo.notifications.service.NotificationService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
-import java.util.Map;
-
+/**
+ * Notification Controller.
+ * Handles notification requests.
+ *
+ * Protected by:
+ * - APIKeyAuthFilter (validates X-API-KEY)
+ * - RateLimiterFilter (enforces rate limits)
+ */
 @RestController
 @RequestMapping("/api/notifications")
 public class NotificationController {
 
-    /**
-     * Send a notification (stub implementation).
-     * This endpoint is protected by the RateLimiterFilter.
-     */
-    @PostMapping
-    public ResponseEntity<Map<String, Object>> sendNotification(
-            @RequestHeader(value = "X-API-KEY", required = false) String apiKey,
-            @RequestParam(required = false) String channel,
-            @RequestBody(required = false) Map<String, Object> payload) {
+    private final NotificationService notificationService;
 
-        // Stub implementation - just return success
-        Map<String, Object> response = Map.of(
-                "status", "accepted",
-                "message", "Notification queued for delivery",
-                "channel", channel != null ? channel : "GENERAL",
-                "timestamp", Instant.now().toString()
-        );
-
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    public NotificationController(NotificationService notificationService) {
+        this.notificationService = notificationService;
     }
 
     /**
-     * Get notification status (stub implementation).
+     * Send a notification.
+     *
+     * Request body must contain:
+     * - channel: "SMS" or "EMAIL"
+     * - to: recipient (e.g., phone number or email)
+     * - message: notification message (max 500 chars)
+     *
+     * Returns HTTP 202 Accepted if notification is queued.
+     * Rate limit headers are added by RateLimiterFilter.
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getNotificationStatus(@PathVariable String id) {
-        Map<String, Object> response = Map.of(
-                "id", id,
-                "status", "delivered",
-                "timestamp", Instant.now().toString()
+    @PostMapping
+    public ResponseEntity<NotificationResponse> sendNotification(
+            @Valid @RequestBody NotificationRequest request,
+            HttpServletRequest httpRequest) {
+
+        // Get authenticated client info from request attributes
+        // (set by APIKeyAuthFilter)
+        String clientName = (String) httpRequest.getAttribute("clientName");
+        Long clientId = (Long) httpRequest.getAttribute("clientId");
+
+        // Process notification
+        NotificationResponse response = notificationService.sendNotification(
+                request,
+                clientId,
+                clientName
         );
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 }

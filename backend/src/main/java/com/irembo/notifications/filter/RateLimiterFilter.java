@@ -88,11 +88,13 @@ public class RateLimiterFilter extends OncePerRequestFilter {
 
     /**
      * Determine if rate limiting should be skipped for this path.
+     * Skip for: health checks, actuator endpoints, admin endpoints, error pages.
      */
     private boolean shouldSkipRateLimiting(String path) {
         return path.equals("/health") ||
                path.equals("/actuator/health") ||
                path.startsWith("/actuator/") ||
+               path.startsWith("/admin/") ||
                path.startsWith("/error");
     }
 
