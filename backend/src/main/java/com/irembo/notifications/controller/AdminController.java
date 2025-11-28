@@ -6,6 +6,11 @@ import com.irembo.notifications.infra.db.entity.SystemLimit;
 import com.irembo.notifications.infra.db.repository.ClientLimitRepository;
 import com.irembo.notifications.infra.db.repository.ClientRepository;
 import com.irembo.notifications.infra.db.repository.SystemLimitRepository;
+import com.irembo.notifications.model.dto.ClientLimitRequest;
+import com.irembo.notifications.model.dto.CreateClientRequest;
+import com.irembo.notifications.model.dto.UpdateClientRequest;
+import com.irembo.notifications.service.AdminService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,14 +30,17 @@ public class AdminController {
     private final ClientRepository clientRepository;
     private final ClientLimitRepository clientLimitRepository;
     private final SystemLimitRepository systemLimitRepository;
+    private final AdminService adminService;
 
     public AdminController(
             ClientRepository clientRepository,
             ClientLimitRepository clientLimitRepository,
-            SystemLimitRepository systemLimitRepository) {
+            SystemLimitRepository systemLimitRepository,
+            AdminService adminService) {
         this.clientRepository = clientRepository;
         this.clientLimitRepository = clientLimitRepository;
         this.systemLimitRepository = systemLimitRepository;
+        this.adminService = adminService;
     }
 
     /**
@@ -60,23 +68,65 @@ public class AdminController {
      * Create a new client.
      */
     @PostMapping("/clients")
-    public ResponseEntity<Client> createClient(@RequestBody Client client) {
-        client.setId(null); // Ensure new ID is generated
+    public ResponseEntity<Client> createClient(@Valid @RequestBody CreateClientRequest request) {
+        Client client = new Client();
+        client.setApiKey(request.apiKey());
+        client.setName(request.name());
+        client.setPriority(request.priority());
+        client.setActive(request.active());
+
         Client saved = clientRepository.save(client);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     /**
      * Update a client.
+     * Note: Cache is evicted for this client when updated.
      */
     @PutMapping("/clients/{id}")
-    public ResponseEntity<?> updateClient(@PathVariable Long id, @RequestBody Client client) {
+    public ResponseEntity<?> updateClient(@PathVariable Long id, @Valid @RequestBody UpdateClientRequest request) {
+        Optional<Client> existing = clientRepository.findById(id);
+        if (existing.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Client not found", "id", id));
+        }
+
+        Client client = existing.get();
+        // Only update fields that are provided
+        if (request.apiKey() != null) {
+            client.setApiKey(request.apiKey());
+        }
+        if (request.name() != null) {
+            client.setName(request.name());
+        }
+        if (request.priority() != null) {
+            client.setPriority(request.priority());
+        }
+        if (request.active() != null) {
+            client.setActive(request.active());
+        }
+
+        Client updated = adminService.updateClient(id, client);
+        return ResponseEntity.ok(updated);
+    }
+
+    /**
+     * Update limits for a specific client.
+     * Note: Cache is automatically evicted when limits are updated.
+     */
+    @PutMapping("/clients/{id}/limits")
+    public ResponseEntity<?> updateClientLimits(@PathVariable Long id, @Valid @RequestBody ClientLimitRequest request) {
         if (!clientRepository.existsById(id)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Client not found", "id", id));
         }
-        client.setId(id);
-        Client updated = clientRepository.save(client);
+
+        ClientLimit limit = new ClientLimit();
+        limit.setWindowSizeSeconds(request.windowSizeSeconds());
+        limit.setMaxRequestsPerWindow(request.maxRequestsPerWindow());
+        limit.setMonthlyQuota(request.monthlyQuota());
+
+        ClientLimit updated = adminService.createOrUpdateClientLimit(id, limit);
         return ResponseEntity.ok(updated);
     }
 
@@ -116,21 +166,20 @@ public class AdminController {
 
     /**
      * Create or update a client limit.
+     * Note: Cache is automatically evicted when limits are updated.
      */
     @PostMapping("/limits")
     public ResponseEntity<ClientLimit> createOrUpdateLimit(@RequestBody ClientLimit limit) {
         // Check if limit already exists for this client
         Optional<ClientLimit> existing = clientLimitRepository.findByClientId(limit.getClientId());
-        if (existing.isPresent()) {
-            limit.setId(existing.get().getId());
-        }
 
-        ClientLimit saved = clientLimitRepository.save(limit);
+        ClientLimit saved = adminService.updateClientLimit(limit);
         return ResponseEntity.status(existing.isPresent() ? HttpStatus.OK : HttpStatus.CREATED).body(saved);
     }
 
     /**
      * Delete a client limit.
+     * Note: Cache is automatically evicted when limits are deleted.
      */
     @DeleteMapping("/limits/{id}")
     public ResponseEntity<?> deleteLimit(@PathVariable Long id) {
@@ -138,7 +187,7 @@ public class AdminController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Client limit not found", "id", id));
         }
-        clientLimitRepository.deleteById(id);
+        adminService.deleteClientLimit(id);
         return ResponseEntity.ok(Map.of("message", "Client limit deleted", "id", id));
     }
 

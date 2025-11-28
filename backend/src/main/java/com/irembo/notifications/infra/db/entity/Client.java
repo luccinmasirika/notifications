@@ -24,6 +24,9 @@ public class Client {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "priority")
+    private Integer priority = 0;
+
     @Column(name = "active")
     private Boolean active = true;
 
