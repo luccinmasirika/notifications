@@ -1,10 +1,17 @@
 package com.irembo.notifications.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -12,6 +19,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 
+/**
+ * Security Configuration.
+ *
+ * Two authentication mechanisms:
+ * 1. API Key (X-API-KEY header) for /api/** endpoints - handled by APIKeyAuthFilter
+ * 2. HTTP Basic Auth for /admin/** endpoints - handled by Spring Security
+ *
+ * Stateless (no sessions, no CSRF).
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -19,12 +35,25 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
+            .csrf(csrf -> csrf.disable()) // Stateless API, no CSRF needed
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .anyRequest().permitAll()
-            );
+                // Public endpoints
+                .requestMatchers("/health", "/actuator/health", "/error").permitAll()
+
+                // Admin endpoints require HTTP Basic Auth
+                .requestMatchers("/admin/**").authenticated()
+
+                // API endpoints use API Key auth (handled by APIKeyAuthFilter)
+                // Spring Security permits them here, but APIKeyAuthFilter will validate
+                .requestMatchers("/api/**").permitAll()
+
+                // Deny everything else
+                .anyRequest().denyAll()
+            )
+            // Enable HTTP Basic Auth for admin endpoints
+            .httpBasic(basic -> {});
 
         return http.build();
     }
@@ -40,5 +69,31 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    /**
+     * Password encoder for admin credentials.
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * In-memory user store for admin users.
+     * In production, this should be replaced with database-backed user store.
+     */
+    @Bean
+    public UserDetailsService userDetailsService(
+            @Value("${admin.username:admin}") String username,
+            @Value("${admin.password:admin123}") String password) {
+
+        UserDetails admin = User.builder()
+                .username(username)
+                .password(passwordEncoder().encode(password))
+                .roles("ADMIN")
+                .build();
+
+        return new InMemoryUserDetailsManager(admin);
     }
 }
