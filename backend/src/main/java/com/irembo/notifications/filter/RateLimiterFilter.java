@@ -1,0 +1,201 @@
+package com.irembo.notifications.filter;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.irembo.notifications.model.dto.RateDecision;
+import com.irembo.notifications.model.enums.DecisionType;
+import com.irembo.notifications.service.RateLimiterService;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+
+@Component
+public class RateLimiterFilter extends OncePerRequestFilter {
+
+    private static final Logger logger = LoggerFactory.getLogger(RateLimiterFilter.class);
+
+    private static final String API_KEY_HEADER = "X-API-KEY";
+    private static final int JITTER_MIN_MS = 50;
+    private static final int JITTER_MAX_MS = 200;
+
+    private final RateLimiterService rateLimiterService;
+    private final ObjectMapper objectMapper;
+    private final Random random;
+
+    public RateLimiterFilter(RateLimiterService rateLimiterService) {
+        this.rateLimiterService = rateLimiterService;
+        this.objectMapper = new ObjectMapper();
+        this.random = new Random();
+    }
+
+    @Override
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
+
+        // Skip rate limiting for health check and other non-API endpoints
+        String path = request.getRequestURI();
+        if (shouldSkipRateLimiting(path)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // Extract API key from header
+        String apiKey = request.getHeader(API_KEY_HEADER);
+        if (apiKey == null || apiKey.isBlank()) {
+            sendUnauthorizedResponse(response, "Missing X-API-KEY header");
+            return;
+        }
+
+        // Extract channel from request (default to "GENERAL")
+        String channel = extractChannel(request);
+
+        // Check rate limits
+        RateDecision decision = rateLimiterService.checkAndConsume(apiKey, channel);
+
+        // Always set rate limit headers
+        setRateLimitHeaders(response, decision);
+
+        // Handle decision
+        if (decision.type() == DecisionType.HARD_REJECT) {
+            handleHardReject(response, decision);
+            return;
+        }
+
+        if (decision.type() == DecisionType.SOFT_THROTTLE) {
+            handleSoftThrottle(decision);
+        }
+
+        // Continue with the request
+        filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Determine if rate limiting should be skipped for this path.
+     */
+    private boolean shouldSkipRateLimiting(String path) {
+        return path.equals("/health") ||
+               path.equals("/actuator/health") ||
+               path.startsWith("/actuator/") ||
+               path.startsWith("/error");
+    }
+
+    /**
+     * Extract notification channel from request.
+     * This could come from query param, request body, or default to "GENERAL".
+     */
+    private String extractChannel(HttpServletRequest request) {
+        String channel = request.getParameter("channel");
+        if (channel != null && !channel.isBlank()) {
+            return channel.toUpperCase();
+        }
+        return "GENERAL";
+    }
+
+    /**
+     * Set rate limit headers on the response.
+     */
+    private void setRateLimitHeaders(HttpServletResponse response, RateDecision decision) {
+        response.setHeader("X-RateLimit-Limit", String.valueOf(decision.limit()));
+        response.setHeader("X-RateLimit-Remaining", String.valueOf(decision.remaining()));
+        response.setHeader("X-RateLimit-Reset", String.valueOf(decision.reset().getEpochSecond()));
+
+        if (decision.type() == DecisionType.HARD_REJECT && decision.retryAt() != null) {
+            long retryAfterSeconds = decision.retryAt().getEpochSecond() - Instant.now().getEpochSecond();
+            response.setHeader("Retry-After", String.valueOf(Math.max(0, retryAfterSeconds)));
+        }
+    }
+
+    /**
+     * Handle hard reject - return 429 with JSON body.
+     */
+    private void handleHardReject(HttpServletResponse response, RateDecision decision) throws IOException {
+        response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+        Map<String, Object> errorBody = new HashMap<>();
+        errorBody.put("error", "Rate limit exceeded");
+        errorBody.put("status", 429);
+        errorBody.put("message", String.format("Rate limit exceeded. Usage: %.2f%%", decision.usagePercent()));
+        errorBody.put("limit", decision.limit());
+        errorBody.put("remaining", decision.remaining());
+        errorBody.put("reset", decision.reset().getEpochSecond());
+
+        if (decision.retryAt() != null) {
+            errorBody.put("retryAt", decision.retryAt().getEpochSecond());
+            long retryAfterSeconds = decision.retryAt().getEpochSecond() - Instant.now().getEpochSecond();
+            errorBody.put("retryAfter", Math.max(0, retryAfterSeconds));
+        }
+
+        String jsonResponse = objectMapper.writeValueAsString(errorBody);
+        response.getWriter().write(jsonResponse);
+        response.getWriter().flush();
+
+        logger.warn("Rate limit hard reject: API key ending in {}, usage: {:.2f}%",
+                maskApiKey(extractApiKeyFromResponse(response)), decision.usagePercent());
+    }
+
+    /**
+     * Handle soft throttle - add jitter delay.
+     */
+    private void handleSoftThrottle(RateDecision decision) {
+        int jitterMs = JITTER_MIN_MS + random.nextInt(JITTER_MAX_MS - JITTER_MIN_MS);
+
+        try {
+            logger.info("Soft throttle applied: {}ms delay, usage: {:.2f}%", jitterMs, decision.usagePercent());
+            Thread.sleep(jitterMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.warn("Soft throttle interrupted", e);
+        }
+    }
+
+    /**
+     * Send 401 Unauthorized response.
+     */
+    private void sendUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpStatus.UNAUTHORIZED.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+        Map<String, Object> errorBody = new HashMap<>();
+        errorBody.put("error", "Unauthorized");
+        errorBody.put("status", 401);
+        errorBody.put("message", message);
+
+        String jsonResponse = objectMapper.writeValueAsString(errorBody);
+        response.getWriter().write(jsonResponse);
+        response.getWriter().flush();
+    }
+
+    /**
+     * Mask API key for logging (show only last 4 characters).
+     */
+    private String maskApiKey(String apiKey) {
+        if (apiKey == null || apiKey.length() <= 4) {
+            return "****";
+        }
+        return "****" + apiKey.substring(apiKey.length() - 4);
+    }
+
+    /**
+     * Extract API key from response headers for logging.
+     */
+    private String extractApiKeyFromResponse(HttpServletResponse response) {
+        // This is a placeholder - in production, you'd track the API key differently
+        return "unknown";
+    }
+}
