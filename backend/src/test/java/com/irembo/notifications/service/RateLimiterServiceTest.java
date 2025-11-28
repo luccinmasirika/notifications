@@ -21,6 +21,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -76,16 +77,16 @@ class RateLimiterServiceTest {
         testSystemLimit.setMaxRequestsPerWindow(10000);
         testSystemLimit.setActive(true);
 
-        // Default mocks
-        when(clientRepository.findByApiKey("test-api-key-123"))
+        // Default mocks (lenient to avoid unnecessary stubbing warnings)
+        lenient().when(clientRepository.findByApiKey("test-api-key-123"))
                 .thenReturn(Optional.of(testClient));
-        when(clientLimitRepository.findByClientId(1L))
+        lenient().when(clientLimitRepository.findByClientId(1L))
                 .thenReturn(Optional.of(testClientLimit));
-        when(systemLimitRepository.findByNameAndActiveTrue("global_rate_limit"))
+        lenient().when(systemLimitRepository.findByNameAndActiveTrue("global_rate_limit"))
                 .thenReturn(Optional.of(testSystemLimit));
-        when(redisCounter.getCurrentYearMonth())
+        lenient().when(redisCounter.getCurrentYearMonth())
                 .thenReturn("2025-11");
-        when(redisCounter.getWindowResetTime(anyInt()))
+        lenient().when(redisCounter.getWindowResetTime(anyInt()))
                 .thenReturn(Instant.now().plusSeconds(10));
     }
 
@@ -130,8 +131,8 @@ class RateLimiterServiceTest {
     void shouldHardRejectWhenUsageAt100Percent() {
         // Given: Usage is at 100% (100 out of 100 requests)
         when(redisCounter.getWindowCounter("1", 10)).thenReturn(100L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        lenient().when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
+        lenient().when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
         RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
@@ -149,8 +150,8 @@ class RateLimiterServiceTest {
     void shouldHardRejectWhenUsageExceeds100Percent() {
         // Given: Usage exceeds 100% (150 out of 100 requests - due to race conditions)
         when(redisCounter.getWindowCounter("1", 10)).thenReturn(150L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        lenient().when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
+        lenient().when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
         RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
@@ -224,8 +225,8 @@ class RateLimiterServiceTest {
     @DisplayName("Should return HARD_REJECT when global limit is exceeded")
     void shouldRejectWhenGlobalLimitExceeded() {
         // Given: Client limits are fine, but global limit is exceeded
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(50L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
+        lenient().when(redisCounter.getWindowCounter("1", 10)).thenReturn(50L);
+        lenient().when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
         when(redisCounter.getGlobalWindow(10)).thenReturn(10000L); // At global limit
 
         // When

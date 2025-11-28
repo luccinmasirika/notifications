@@ -43,9 +43,9 @@ class APIKeyAuthFilterTest {
     void setUp() throws Exception {
         filter = new APIKeyAuthFilter(clientRepository);
 
-        // Setup response writer
+        // Setup response writer (lenient as not all tests write responses)
         responseWriter = new StringWriter();
-        when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
+        lenient().when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
     }
 
     @Test
