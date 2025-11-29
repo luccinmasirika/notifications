@@ -252,4 +252,163 @@ class RateLimiterServiceTest {
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
         assertThat(decision.usagePercent()).isGreaterThanOrEqualTo(90.0); // Should use window's higher usage
     }
+
+    @Test
+    @DisplayName("Should handle exact 80% boundary (SOFT_THROTTLE)")
+    void shouldSoftThrottleAtExact80PercentBoundary() {
+        // Given: Exactly at 80% threshold (80 out of 100)
+        when(redisCounter.getWindowCounter("1", 10)).thenReturn(80L);
+        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
+        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+
+        // When
+        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+
+        // Then
+        assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
+        assertThat(decision.usagePercent()).isEqualTo(80.0);
+    }
+
+    @Test
+    @DisplayName("Should handle exact 99% usage (still SOFT_THROTTLE)")
+    void shouldSoftThrottleAtExact99Percent() {
+        // Given: At 99% (99 out of 100)
+        when(redisCounter.getWindowCounter("1", 10)).thenReturn(99L);
+        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
+        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+
+        // When
+        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+
+        // Then
+        assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
+        assertThat(decision.usagePercent()).isEqualTo(99.0);
+        assertThat(decision.remaining()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Should handle window exhaustion with 0 remaining")
+    void shouldHandleWindowExhaustion() {
+        // Given: Completely exhausted window
+        when(redisCounter.getWindowCounter("1", 10)).thenReturn(100L);
+        lenient().when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
+        lenient().when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+
+        // When
+        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+
+        // Then
+        assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
+        assertThat(decision.remaining()).isEqualTo(0);
+        assertThat(decision.retryAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should handle monthly quota exhaustion")
+    void shouldHandleMonthlyQuotaExhaustion() {
+        // Given: Monthly quota completely exhausted
+        when(redisCounter.getWindowCounter("1", 10)).thenReturn(10L);
+        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(10000L);
+        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+
+        // When
+        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+
+        // Then
+        assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
+        assertThat(decision.usagePercent()).isEqualTo(100.0);
+    }
+
+    @Test
+    @DisplayName("Should handle client without limits configured")
+    void shouldHandleClientWithoutLimits() {
+        // Given: Client exists but has no limits
+        when(clientLimitRepository.findByClientId(1L)).thenReturn(Optional.empty());
+
+        // When
+        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+
+        // Then
+        assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
+    }
+
+    @Test
+    @DisplayName("Should handle zero requests scenario (ALLOW)")
+    void shouldAllowWhenNoRequestsMadeYet() {
+        // Given: No requests made yet (0 usage)
+        when(redisCounter.getWindowCounter("1", 10)).thenReturn(0L);
+        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(0L);
+        when(redisCounter.getGlobalWindow(10)).thenReturn(0L);
+
+        // When
+        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+
+        // Then
+        assertThat(decision.type()).isEqualTo(DecisionType.ALLOW);
+        assertThat(decision.usagePercent()).isEqualTo(0.0);
+        assertThat(decision.remaining()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("Should handle one request remaining (79% usage)")
+    void shouldAllowWithOneRequestRemaining() {
+        // Given: 79 out of 100 requests (still under 80%)
+        when(redisCounter.getWindowCounter("1", 10)).thenReturn(79L);
+        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
+        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+
+        // When
+        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+
+        // Then
+        assertThat(decision.type()).isEqualTo(DecisionType.ALLOW);
+        assertThat(decision.usagePercent()).isEqualTo(79.0);
+    }
+
+    @Test
+    @DisplayName("Should calculate correct reset time for window")
+    void shouldProvideCorrectResetTime() {
+        // Given: At limit
+        when(redisCounter.getWindowCounter("1", 10)).thenReturn(100L);
+        Instant expectedReset = Instant.now().plusSeconds(10);
+        when(redisCounter.getWindowResetTime(10)).thenReturn(expectedReset);
+
+        // When
+        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+
+        // Then
+        assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
+        assertThat(decision.retryAt()).isEqualTo(expectedReset);
+    }
+
+    @Test
+    @DisplayName("Should handle both window and monthly quota soft throttle")
+    void shouldSoftThrottleWhenBothWindowAndMonthlyAtThreshold() {
+        // Given: Both at 85%
+        when(redisCounter.getWindowCounter("1", 10)).thenReturn(85L);
+        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(8500L);
+        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+
+        // When
+        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+
+        // Then
+        assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
+        assertThat(decision.usagePercent()).isEqualTo(85.0);
+    }
+
+    @Test
+    @DisplayName("Should handle global system limit at threshold")
+    void shouldSoftThrottleWhenGlobalLimitAt85Percent() {
+        // Given: Client fine, global at 85%
+        when(redisCounter.getWindowCounter("1", 10)).thenReturn(50L);
+        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
+        when(redisCounter.getGlobalWindow(10)).thenReturn(8500L); // 85% of 10000
+
+        // When
+        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+
+        // Then
+        assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
+    }
 }
