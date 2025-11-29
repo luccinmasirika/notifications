@@ -1,7 +1,28 @@
-/* Irembo Notifications Admin - Design System */
+/* Google Material 3 Inspired - Minimalist Design */
 
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
-@import './styles/variables.css';
+
+:root {
+  /* Custom color palette */
+  --primary: #0063CF;
+  --primary-hover: #004FA6;
+  --surface: #ffffff;
+  --surface-variant: #f8f9fa;
+  --outline: #dadce0;
+  --text-primary: #202124;
+  --text-secondary: #5f6368;
+  --text-tertiary: #80868b;
+  --success: #34a853;
+  --warning: #fbbc04;
+  --error: #ea4335;
+  --shadow: rgba(60, 64, 67, 0.3);
+  --shadow-sm: rgba(60, 64, 67, 0.15);
+  
+  /* Material Design Theme Tokens */
+  --mdc-theme-primary: #0063CF;
+  --mat-sys-primary: #0063CF;
+  --mdc-filled-button-container-color: #0063CF;
+}
 
 * {
   box-sizing: border-box;
@@ -28,15 +49,15 @@ body {
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Roboto', sans-serif;
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
+  font-weight: 500;
+  color: var(--text-primary);
   margin: 0;
 }
 
-h1 { font-size: var(--font-size-6xl); line-height: 40px; }
-h2 { font-size: var(--font-size-4xl); line-height: 32px; }
-h3 { font-size: var(--font-size-2xl); line-height: 28px; }
-h4 { font-size: var(--font-size-lg); line-height: 24px; }
+h1 { font-size: 32px; line-height: 40px; }
+h2 { font-size: 24px; line-height: 32px; }
+h3 { font-size: 20px; line-height: 28px; }
+h4 { font-size: 16px; line-height: 24px; }
 
 /* Material Design overrides */
 /* Primary color overrides for Angular Material components */
@@ -197,39 +218,6 @@ button.mat-mdc-unelevated-button.mat-primary:disabled {
 .mat-mdc-chip.mat-primary {
   --mdc-chip-elevated-container-color: var(--primary);
   --mdc-chip-elevated-label-text-color: #ffffff;
-}
-
-/* Status chips - Light green for active, gray for inactive */
-.mat-mdc-chip.status-active {
-  --mdc-chip-elevated-container-color: var(--color-status-active-bg) !important;
-  --mdc-chip-elevated-label-text-color: var(--color-status-active-text) !important;
-  background-color: var(--color-status-active-bg) !important;
-  color: var(--color-status-active-text) !important;
-}
-
-.mat-mdc-chip.status-active .mdc-elevation-overlay {
-  background-color: var(--color-status-active-bg) !important;
-}
-
-.mat-mdc-chip.status-active .mat-mdc-chip-action-label,
-.mat-mdc-chip.status-active .mdc-chip__text-label {
-  color: var(--color-status-active-text) !important;
-}
-
-.mat-mdc-chip.status-inactive {
-  --mdc-chip-elevated-container-color: var(--color-status-inactive-bg) !important;
-  --mdc-chip-elevated-label-text-color: var(--color-status-inactive-text) !important;
-  background-color: var(--color-status-inactive-bg) !important;
-  color: var(--color-status-inactive-text) !important;
-}
-
-.mat-mdc-chip.status-inactive .mdc-elevation-overlay {
-  background-color: var(--color-status-inactive-bg) !important;
-}
-
-.mat-mdc-chip.status-inactive .mat-mdc-chip-action-label,
-.mat-mdc-chip.status-inactive .mdc-chip__text-label {
-  color: var(--color-status-inactive-text) !important;
 }
 
 /* Material Menu */

@@ -8,32 +8,6 @@ mat-chip {
   padding: 4px 12px;
 }
 
-.status-active {
-  background-color: var(--color-status-active-bg, #e8f5e9) !important;
-  color: var(--color-status-active-text, #2e7d32) !important;
-}
-
-.status-active .mdc-elevation-overlay {
-  background-color: var(--color-status-active-bg, #e8f5e9) !important;
-}
-
-.status-active .mat-mdc-chip-action-label {
-  color: var(--color-status-active-text, #2e7d32) !important;
-}
-
-.status-inactive {
-  background-color: var(--color-status-inactive-bg, #e0e0e0) !important;
-  color: var(--color-status-inactive-text, #757575) !important;
-}
-
-.status-inactive .mdc-elevation-overlay {
-  background-color: var(--color-status-inactive-bg, #e0e0e0) !important;
-}
-
-.status-inactive .mat-mdc-chip-action-label {
-  color: var(--color-status-inactive-text, #757575) !important;
-}
-
 code {
   background-color: #f5f5f5;
   padding: 2px 6px;

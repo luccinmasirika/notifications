@@ -151,8 +151,8 @@
 }
 
 .status-badge.inactive {
-  background: var(--color-status-inactive-bg, #e0e0e0);
-  color: var(--color-status-inactive-text, #757575);
+  background: #ffebee;
+  color: #c62828;
 }
 
 /* Two Column Layout */
