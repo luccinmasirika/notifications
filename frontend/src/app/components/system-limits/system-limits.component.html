@@ -1,7 +1,7 @@
 <div class="card">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
     <h2 style="margin: 0;">System Limits</h2>
-    <button mat-raised-button color="primary" (click)="openAddLimitDialog()">
+    <button mat-raised-button color="primary" (click)="openAddLimitPage()">
       <mat-icon>add</mat-icon>
       Add System Limit
     </button>
@@ -46,7 +46,7 @@
     <ng-container matColumnDef="actions">
       <th mat-header-cell *matHeaderCellDef>Actions</th>
       <td mat-cell *matCellDef="let limit">
-        <button mat-icon-button color="primary" (click)="openEditLimitDialog(limit)" title="Edit Limit">
+        <button mat-icon-button color="primary" (click)="openEditLimitPage(limit)" title="Edit Limit">
           <mat-icon>edit</mat-icon>
         </button>
       </td>

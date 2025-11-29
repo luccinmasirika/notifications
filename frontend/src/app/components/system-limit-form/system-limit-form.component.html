@@ -1,0 +1,96 @@
+<div class="container">
+  <mat-card class="form-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>{{ isEditMode ? 'edit' : 'add' }}</mat-icon>
+        {{ isEditMode ? 'Edit System Limit' : 'New System Limit' }}
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div *ngIf="loadingLimit" class="loading-state">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Loading system limit...</p>
+      </div>
+
+      <form [formGroup]="limitForm" class="form-container" *ngIf="!loadingLimit">
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Limit Name</mat-label>
+            <input matInput formControlName="name" placeholder="e.g. global_rate_limit, per_minute_limit" [readonly]="isEditMode">
+            <mat-hint>Unique identifier (format: letters, numbers, and underscores only). Examples: global_rate_limit, per_minute_limit, limit_123</mat-hint>
+            <mat-error *ngIf="limitForm.get('name')?.hasError('required')">
+              Name is required
+            </mat-error>
+            <mat-error *ngIf="limitForm.get('name')?.hasError('minlength')">
+              Name must be at least 1 character
+            </mat-error>
+            <mat-error *ngIf="limitForm.get('name')?.hasError('maxlength')">
+              Name must not exceed 255 characters
+            </mat-error>
+            <mat-error *ngIf="limitForm.get('name')?.hasError('pattern')">
+              Name must contain only letters, numbers, and underscores (format: limit_123)
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Window Size (seconds)</mat-label>
+            <input matInput type="number" formControlName="windowSizeSeconds" placeholder="60" min="1">
+            <mat-hint>
+              Time window in seconds. 
+              <span *ngIf="limitForm.get('windowSizeSeconds')?.value">
+                ({{ formatWindowHint(limitForm.get('windowSizeSeconds')?.value) }})
+              </span>
+            </mat-hint>
+            <mat-error *ngIf="limitForm.get('windowSizeSeconds')?.hasError('required')">
+              Window size is required
+            </mat-error>
+            <mat-error *ngIf="limitForm.get('windowSizeSeconds')?.hasError('min')">
+              Window size must be at least 1 second
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Max Requests per Window</mat-label>
+            <input matInput type="number" formControlName="maxRequestsPerWindow" placeholder="1000" min="1">
+            <mat-hint>Maximum number of requests allowed within the time window</mat-hint>
+            <mat-error *ngIf="limitForm.get('maxRequestsPerWindow')?.hasError('required')">
+              Max requests is required
+            </mat-error>
+            <mat-error *ngIf="limitForm.get('maxRequestsPerWindow')?.hasError('min')">
+              Max requests must be at least 1
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-checkbox formControlName="active">
+            Active - System limit will be enforced when active
+          </mat-checkbox>
+        </div>
+
+        <div class="action-buttons">
+          <button mat-button (click)="onCancel()" [disabled]="loading">
+            Cancel
+          </button>
+          <button 
+            mat-raised-button 
+            color="primary" 
+            (click)="onSubmit()" 
+            [disabled]="limitForm.invalid || loading">
+            <span *ngIf="!loading">{{ isEditMode ? 'Save changes' : 'Create limit' }}</span>
+            <span *ngIf="loading" class="loading-content">
+              <mat-spinner diameter="18"></mat-spinner>
+              <span>{{ isEditMode ? 'Saving...' : 'Creating...' }}</span>
+            </span>
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
+

@@ -19,6 +19,7 @@ import { DashboardLayoutComponent } from './components/dashboard-layout/dashboar
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { SystemLimitsComponent } from './components/system-limits/system-limits.component';
 import { SystemLimitDialogComponent } from './components/system-limit-dialog/system-limit-dialog.component';
+import { SystemLimitFormComponent } from './components/system-limit-form/system-limit-form.component';
 
 // Angular Material imports
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -57,7 +58,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     DashboardLayoutComponent,
     DashboardComponent,
     SystemLimitsComponent,
-    SystemLimitDialogComponent
+    SystemLimitDialogComponent,
+    SystemLimitFormComponent
   ],
   imports: [
     BrowserModule,

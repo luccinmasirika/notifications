@@ -126,6 +126,15 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  openTestPage(client: Client): void {
+    if (client.apiKey) {
+      // Navigate to test page with API key as query parameter
+      this.router.navigate(['/client-test'], {
+        queryParams: { apiKey: client.apiKey }
+      });
+    }
+  }
+
   copyApiKey(apiKey: string): void {
     navigator.clipboard.writeText(apiKey).then(() => {
       this.snackBar.open('API key copied to clipboard', 'Close', { duration: 2000 });

@@ -1,23 +1,7 @@
-/* Google Material 3 Inspired - Minimalist Design */
+/* Irembo Notifications Admin - Design System */
 
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
-
-:root {
-  /* Google-inspired color palette */
-  --primary: #1a73e8;
-  --primary-hover: #1557b0;
-  --surface: #ffffff;
-  --surface-variant: #f8f9fa;
-  --outline: #dadce0;
-  --text-primary: #202124;
-  --text-secondary: #5f6368;
-  --text-tertiary: #80868b;
-  --success: #34a853;
-  --warning: #fbbc04;
-  --error: #ea4335;
-  --shadow: rgba(60, 64, 67, 0.3);
-  --shadow-sm: rgba(60, 64, 67, 0.15);
-}
+@import './styles/variables.css';
 
 * {
   box-sizing: border-box;
@@ -44,17 +28,125 @@ body {
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Roboto', sans-serif;
-  font-weight: 500;
-  color: var(--text-primary);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
   margin: 0;
 }
 
-h1 { font-size: 32px; line-height: 40px; }
-h2 { font-size: 24px; line-height: 32px; }
-h3 { font-size: 20px; line-height: 28px; }
-h4 { font-size: 16px; line-height: 24px; }
+h1 { font-size: var(--font-size-6xl); line-height: 40px; }
+h2 { font-size: var(--font-size-4xl); line-height: 32px; }
+h3 { font-size: var(--font-size-2xl); line-height: 28px; }
+h4 { font-size: var(--font-size-lg); line-height: 24px; }
 
 /* Material Design overrides */
+/* Primary color overrides for Angular Material components */
+.mat-mdc-button.mat-primary,
+.mat-mdc-raised-button.mat-primary,
+.mat-mdc-unelevated-button.mat-primary {
+  --mdc-filled-button-container-color: #0063CF !important;
+  --mdc-filled-button-label-text-color: #ffffff !important;
+  --mdc-protected-button-container-color: #0063CF !important;
+  --mdc-filled-button-hover-state-layer-color: rgba(255, 255, 255, 0.08) !important;
+  --mdc-filled-button-focus-state-layer-color: rgba(255, 255, 255, 0.12) !important;
+  --mdc-filled-button-pressed-state-layer-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+.mat-mdc-button.mat-primary:hover,
+.mat-mdc-raised-button.mat-primary:hover,
+.mat-mdc-unelevated-button.mat-primary:hover {
+  --mdc-filled-button-container-color: #004FA6 !important;
+  --mdc-protected-button-container-color: #004FA6 !important;
+}
+
+.mat-mdc-button.mat-primary:not(:disabled),
+.mat-mdc-raised-button.mat-primary:not(:disabled),
+.mat-mdc-unelevated-button.mat-primary:not(:disabled) {
+  --mdc-filled-button-container-color: #0063CF !important;
+  --mdc-protected-button-container-color: #0063CF !important;
+}
+
+.mat-mdc-button.mat-primary .mdc-button__label,
+.mat-mdc-raised-button.mat-primary .mdc-button__label,
+.mat-mdc-unelevated-button.mat-primary .mdc-button__label {
+  color: #ffffff !important;
+}
+
+/* Direct style override for MDC button background */
+.mat-mdc-button.mat-primary .mdc-button__ripple,
+.mat-mdc-raised-button.mat-primary .mdc-button__ripple,
+.mat-mdc-unelevated-button.mat-primary .mdc-button__ripple {
+  background-color: #0063CF !important;
+}
+
+.mat-mdc-button.mat-primary .mat-mdc-button-persistent-ripple::before,
+.mat-mdc-raised-button.mat-primary .mat-mdc-button-persistent-ripple::before,
+.mat-mdc-unelevated-button.mat-primary .mat-mdc-button-persistent-ripple::before {
+  background-color: #0063CF !important;
+}
+
+/* Force background on the button element itself */
+button.mat-mdc-raised-button.mat-primary,
+button.mat-mdc-button.mat-primary,
+button.mat-mdc-unelevated-button.mat-primary {
+  background-color: #0063CF !important;
+  color: #ffffff !important;
+}
+
+button.mat-mdc-raised-button.mat-primary:hover:not(:disabled),
+button.mat-mdc-button.mat-primary:hover:not(:disabled),
+button.mat-mdc-unelevated-button.mat-primary:hover:not(:disabled) {
+  background-color: #004FA6 !important;
+}
+
+button.mat-mdc-raised-button.mat-primary:disabled,
+button.mat-mdc-button.mat-primary:disabled,
+button.mat-mdc-unelevated-button.mat-primary:disabled {
+  background-color: rgba(0, 99, 207, 0.38) !important;
+  color: rgba(255, 255, 255, 0.38) !important;
+}
+
+/* Additional MDC-specific overrides for Material 17 */
+.mdc-button.mat-mdc-raised-button.mat-primary,
+.mdc-button.mat-mdc-unelevated-button.mat-primary {
+  background-color: #0063CF !important;
+  color: #ffffff !important;
+}
+
+.mdc-button.mat-mdc-raised-button.mat-primary:hover:not(:disabled),
+.mdc-button.mat-mdc-unelevated-button.mat-primary:hover:not(:disabled) {
+  background-color: #004FA6 !important;
+}
+
+.mdc-button--filled.mat-primary {
+  background-color: #0063CF !important;
+  color: #ffffff !important;
+}
+
+.mdc-button--filled.mat-primary:hover:not(:disabled) {
+  background-color: #004FA6 !important;
+}
+
+/* Additional overrides for MDC button elements */
+.mat-mdc-raised-button.mat-primary .mdc-button,
+.mat-mdc-unelevated-button.mat-primary .mdc-button,
+.mat-mdc-button.mat-primary .mdc-button {
+  background-color: #0063CF !important;
+}
+
+.mat-mdc-raised-button.mat-primary .mdc-button:hover:not(:disabled),
+.mat-mdc-unelevated-button.mat-primary .mdc-button:hover:not(:disabled),
+.mat-mdc-button.mat-primary .mdc-button:hover:not(:disabled) {
+  background-color: #004FA6 !important;
+}
+
+.mat-mdc-icon-button.mat-primary {
+  --mdc-icon-button-icon-color: var(--primary);
+}
+
+.mat-mdc-icon-button.mat-primary:hover {
+  --mdc-icon-button-icon-color: var(--primary-hover);
+}
+
 .mat-mdc-button, .mat-mdc-raised-button {
   border-radius: 24px;
   font-weight: 500;
@@ -84,8 +176,130 @@ h4 { font-size: 16px; line-height: 24px; }
 }
 
 .mat-mdc-form-field.mat-focused .mdc-text-field--outlined .mdc-notched-outline {
-  border-color: var(--primary);
+  border-color: var(--primary) !important;
   border-width: 2px;
+}
+
+/* Material Progress indicators */
+.mat-mdc-progress-bar .mdc-linear-progress__buffer-bar {
+  background-color: rgba(0, 99, 207, 0.25);
+}
+
+.mat-mdc-progress-bar .mdc-linear-progress__bar-inner {
+  background-color: var(--primary);
+}
+
+.mat-mdc-progress-spinner circle {
+  stroke: var(--primary);
+}
+
+/* Material Chips */
+.mat-mdc-chip.mat-primary {
+  --mdc-chip-elevated-container-color: var(--primary);
+  --mdc-chip-elevated-label-text-color: #ffffff;
+}
+
+/* Status chips - Light green for active, gray for inactive */
+.mat-mdc-chip.status-active {
+  --mdc-chip-elevated-container-color: var(--color-status-active-bg) !important;
+  --mdc-chip-elevated-label-text-color: var(--color-status-active-text) !important;
+  background-color: var(--color-status-active-bg) !important;
+  color: var(--color-status-active-text) !important;
+}
+
+.mat-mdc-chip.status-active .mdc-elevation-overlay {
+  background-color: var(--color-status-active-bg) !important;
+}
+
+.mat-mdc-chip.status-active .mat-mdc-chip-action-label,
+.mat-mdc-chip.status-active .mdc-chip__text-label {
+  color: var(--color-status-active-text) !important;
+}
+
+.mat-mdc-chip.status-inactive {
+  --mdc-chip-elevated-container-color: var(--color-status-inactive-bg) !important;
+  --mdc-chip-elevated-label-text-color: var(--color-status-inactive-text) !important;
+  background-color: var(--color-status-inactive-bg) !important;
+  color: var(--color-status-inactive-text) !important;
+}
+
+.mat-mdc-chip.status-inactive .mdc-elevation-overlay {
+  background-color: var(--color-status-inactive-bg) !important;
+}
+
+.mat-mdc-chip.status-inactive .mat-mdc-chip-action-label,
+.mat-mdc-chip.status-inactive .mdc-chip__text-label {
+  color: var(--color-status-inactive-text) !important;
+}
+
+/* Material Menu */
+.mat-mdc-menu-panel {
+  --mdc-menu-container-color: var(--surface);
+}
+
+/* Material Snackbar */
+.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: var(--primary);
+  --mdc-snackbar-supporting-text-color: #ffffff;
+}
+
+/* Material Form Fields - Primary color */
+.mat-mdc-form-field.mat-focused.mat-primary .mdc-text-field--filled .mdc-line-ripple::after,
+.mat-mdc-form-field.mat-focused.mat-primary .mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__leading,
+.mat-mdc-form-field.mat-focused.mat-primary .mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__notch,
+.mat-mdc-form-field.mat-focused.mat-primary .mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__trailing {
+  border-color: var(--primary) !important;
+}
+
+.mat-mdc-form-field.mat-focused.mat-primary .mdc-floating-label {
+  color: var(--primary) !important;
+}
+
+/* Material Checkbox Primary */
+.mat-mdc-checkbox.mat-primary {
+  --mdc-checkbox-selected-checkmark-color: #ffffff;
+  --mdc-checkbox-selected-focus-icon-color: var(--primary);
+  --mdc-checkbox-selected-hover-icon-color: var(--primary);
+  --mdc-checkbox-selected-icon-color: var(--primary);
+  --mdc-checkbox-selected-pressed-icon-color: var(--primary);
+}
+
+/* Material Radio Button Primary */
+.mat-mdc-radio-button.mat-primary {
+  --mdc-radio-selected-focus-icon-color: var(--primary);
+  --mdc-radio-selected-hover-icon-color: var(--primary);
+  --mdc-radio-selected-icon-color: var(--primary);
+  --mdc-radio-selected-pressed-icon-color: var(--primary);
+}
+
+/* Material Select Primary */
+.mat-mdc-select.mat-primary:focus .mat-mdc-select-trigger {
+  color: var(--primary);
+}
+
+/* Material Tabs Primary */
+.mat-mdc-tab-group.mat-primary .mdc-tab--active .mdc-tab__text-label {
+  color: var(--primary);
+}
+
+.mat-mdc-tab-group.mat-primary .mat-mdc-tab-header-pagination-chevron {
+  border-color: var(--primary);
+}
+
+/* Material Toolbar Primary */
+.mat-mdc-toolbar.mat-primary {
+  --mdc-elevated-card-container-color: var(--primary);
+}
+
+/* Outlined Button Primary */
+.mat-mdc-outlined-button.mat-primary {
+  --mdc-outlined-button-label-text-color: var(--primary);
+  --mdc-outlined-button-outline-color: var(--primary);
+}
+
+.mat-mdc-outlined-button.mat-primary:hover {
+  --mdc-outlined-button-label-text-color: var(--primary-hover);
+  --mdc-outlined-button-outline-color: var(--primary-hover);
 }
 
 /* Cards - flat design */

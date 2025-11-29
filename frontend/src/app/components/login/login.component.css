@@ -27,6 +27,12 @@
   justify-content: center;
 }
 
+.logo .logo-image {
+  height: 40px;
+  width: auto;
+  display: block;
+}
+
 .login-header h1 {
   font-size: 32px;
   font-weight: 400;

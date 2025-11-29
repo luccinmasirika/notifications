@@ -9,6 +9,7 @@ import { ClientFormComponent } from './components/client-form/client-form.compon
 import { ClientLimitsComponent } from './components/client-limits/client-limits.component';
 import { ClientDetailsComponent } from './components/client-details/client-details.component';
 import { SystemLimitsComponent } from './components/system-limits/system-limits.component';
+import { SystemLimitFormComponent } from './components/system-limit-form/system-limit-form.component';
 import { AuthGuard } from './guards/auth.guard';
 
 const routes: Routes = [
@@ -25,6 +26,8 @@ const routes: Routes = [
       { path: 'clients/:id/limits', component: ClientLimitsComponent },
       { path: 'clients/:id', component: ClientDetailsComponent },
       { path: 'settings', component: SystemLimitsComponent },
+      { path: 'settings/new', component: SystemLimitFormComponent },
+      { path: 'settings/:name/edit', component: SystemLimitFormComponent },
       { path: '', redirectTo: 'admin', pathMatch: 'full' }
     ]
   },

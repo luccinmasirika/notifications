@@ -32,6 +32,14 @@
   cursor: pointer;
 }
 
+.app-logo .logo-image {
+  height: 25px;
+  width: auto;
+  display: block;
+  fill: var(--primary);
+  color: var(--primary);
+}
+
 .app-name {
   font-family: 'Roboto', sans-serif;
   font-size: 22px;

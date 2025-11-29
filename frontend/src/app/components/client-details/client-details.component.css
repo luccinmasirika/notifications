@@ -132,8 +132,8 @@ mat-card-title mat-icon {
 }
 
 .status-badge.inactive {
-  background: #ffebee;
-  color: #c62828;
+  background: var(--color-status-inactive-bg, #e0e0e0);
+  color: var(--color-status-inactive-text, #757575);
 }
 
 .status-content {

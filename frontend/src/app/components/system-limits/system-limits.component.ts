@@ -1,9 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { SystemLimit } from '../../models/client.model';
-import { SystemLimitDialogComponent } from '../system-limit-dialog/system-limit-dialog.component';
 
 @Component({
   selector: 'app-system-limits',
@@ -17,7 +16,7 @@ export class SystemLimitsComponent implements OnInit {
 
   constructor(
     private adminService: AdminService,
-    private dialog: MatDialog,
+    private router: Router,
     private snackBar: MatSnackBar
   ) {}
 
@@ -40,30 +39,14 @@ export class SystemLimitsComponent implements OnInit {
     });
   }
 
-  openAddLimitDialog(): void {
-    const dialogRef = this.dialog.open(SystemLimitDialogComponent, {
-      width: '500px',
-      data: { limit: null }
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.loadSystemLimits();
-      }
-    });
+  openAddLimitPage(): void {
+    this.router.navigate(['/settings/new']);
   }
 
-  openEditLimitDialog(limit: SystemLimit): void {
-    const dialogRef = this.dialog.open(SystemLimitDialogComponent, {
-      width: '500px',
-      data: { limit: { ...limit } }
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.loadSystemLimits();
-      }
-    });
+  openEditLimitPage(limit: SystemLimit): void {
+    // Encode the limit name for the URL
+    const encodedName = encodeURIComponent(limit.name);
+    this.router.navigate(['/settings', encodedName, 'edit']);
   }
 
   formatDate(dateString?: string): string {

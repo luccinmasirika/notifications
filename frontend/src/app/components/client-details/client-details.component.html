@@ -13,6 +13,10 @@
           Client Information
         </mat-card-title>
         <div class="header-actions">
+          <button mat-button (click)="onTest()" class="action-button" [disabled]="!details.client.active">
+            <mat-icon>speed</mat-icon>
+            Tester
+          </button>
           <button mat-button (click)="onEdit()" class="action-button">
             <mat-icon>edit</mat-icon>
             Edit

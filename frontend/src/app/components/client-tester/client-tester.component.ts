@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { HttpErrorResponse, HttpResponse } from '@angular/common/http';
 import { Subscription, interval, Subject } from 'rxjs';
 import { takeUntil, finalize } from 'rxjs/operators';
@@ -38,7 +39,8 @@ export class ClientTesterComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private testerService: ClientTesterService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute
   ) {
     this.testForm = this.fb.group({
       apiKey: ['', [Validators.required]],
@@ -52,11 +54,26 @@ export class ClientTesterComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     console.log('ClientTesterComponent initialized');
-    // Pre-fill with example values
-    this.testForm.patchValue({
-      apiKey: 'test-api-key-123',
-      destination: '+250700000001',
-      message: 'Test notification message'
+    
+    // Check if API key is provided via query params
+    this.route.queryParams.subscribe(params => {
+      const apiKey = params['apiKey'];
+      
+      if (apiKey) {
+        // Pre-fill with API key from query param
+        this.testForm.patchValue({
+          apiKey: apiKey,
+          destination: '+250700000001',
+          message: 'Test notification message'
+        });
+      } else {
+        // Pre-fill with example values
+        this.testForm.patchValue({
+          apiKey: 'test-api-key-123',
+          destination: '+250700000001',
+          message: 'Test notification message'
+        });
+      }
     });
   }
 

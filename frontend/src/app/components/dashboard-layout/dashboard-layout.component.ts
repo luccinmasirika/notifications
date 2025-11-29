@@ -73,7 +73,35 @@ export class DashboardLayoutComponent implements OnInit {
 
     // Handle /settings route
     if (urlParts[0] === 'settings') {
-      tempBreadcrumbs.push({ label: 'Settings' });
+      tempBreadcrumbs.push({ label: 'Settings', route: '/settings' });
+      
+      if (urlParts.length === 1) {
+        // Just /settings
+        this.breadcrumbs = tempBreadcrumbs;
+        return;
+      }
+      
+      if (urlParts[1] === 'new') {
+        // /settings/new
+        tempBreadcrumbs.push({ label: 'New System Limit' });
+        this.breadcrumbs = tempBreadcrumbs;
+        return;
+      }
+      
+      if (urlParts.length === 3 && urlParts[2] === 'edit') {
+        // /settings/:name/edit
+        const limitName = decodeURIComponent(urlParts[1]);
+        // Format the name for display (replace underscores with spaces and capitalize)
+        const formattedName = limitName
+          .split('_')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+        tempBreadcrumbs.push({ label: formattedName });
+        tempBreadcrumbs.push({ label: 'Edit' });
+        this.breadcrumbs = tempBreadcrumbs;
+        return;
+      }
+      
       this.breadcrumbs = tempBreadcrumbs;
       return;
     }

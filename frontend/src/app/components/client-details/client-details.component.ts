@@ -64,6 +64,15 @@ export class ClientDetailsComponent implements OnInit {
     }
   }
 
+  onTest(): void {
+    if (this.details?.client.apiKey) {
+      // Navigate to test page with API key as query parameter
+      this.router.navigate(['/client-test'], {
+        queryParams: { apiKey: this.details.client.apiKey }
+      });
+    }
+  }
+
   formatDate(dateString?: string | null): string {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleString();

@@ -10,12 +10,28 @@ table {
 }
 
 .status-active {
-  background-color: #4caf50;
-  color: white;
+  background-color: var(--color-status-active-bg, #e8f5e9) !important;
+  color: var(--color-status-active-text, #2e7d32) !important;
+}
+
+.status-active .mdc-elevation-overlay {
+  background-color: var(--color-status-active-bg, #e8f5e9) !important;
+}
+
+.status-active .mat-mdc-chip-action-label {
+  color: var(--color-status-active-text, #2e7d32) !important;
 }
 
 .status-inactive {
-  background-color: #f44336;
-  color: white;
+  background-color: var(--color-status-inactive-bg, #e0e0e0) !important;
+  color: var(--color-status-inactive-text, #757575) !important;
+}
+
+.status-inactive .mdc-elevation-overlay {
+  background-color: var(--color-status-inactive-bg, #e0e0e0) !important;
+}
+
+.status-inactive .mat-mdc-chip-action-label {
+  color: var(--color-status-inactive-text, #757575) !important;
 }
 
