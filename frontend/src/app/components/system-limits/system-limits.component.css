@@ -1,0 +1,21 @@
+.card {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+table {
+  width: 100%;
+}
+
+.status-active {
+  background-color: #4caf50;
+  color: white;
+}
+
+.status-inactive {
+  background-color: #f44336;
+  color: white;
+}
+

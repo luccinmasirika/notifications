@@ -1,0 +1,101 @@
+<!-- Stats Overview -->
+<div class="stats-section">
+  <div class="stat-card" *ngFor="let stat of stats">
+    <div class="stat-content">
+      <div class="stat-label">{{ stat.label }}</div>
+      <div class="stat-value">{{ stat.value }}</div>
+      <div class="stat-subtitle" *ngIf="stat.subtitle">{{ stat.subtitle }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="dashboard-content">
+  <!-- Header with Actions -->
+  <div class="section-header">
+    <div>
+      <h2>Clients</h2>
+      <p class="section-subtitle">Manage your notification clients and API keys</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="openAddClientDialog()" class="add-button">
+      <mat-icon>add</mat-icon>
+      Add client
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading clients...</p>
+  </div>
+
+  <!-- Clients List -->
+  <div *ngIf="!loading" class="clients-container">
+    <!-- Empty State -->
+    <div *ngIf="clients.length === 0" class="empty-state">
+      <div class="empty-icon">
+        <mat-icon>inbox</mat-icon>
+      </div>
+      <h3>No clients yet</h3>
+      <p>Get started by creating your first client to send notifications</p>
+      <button mat-raised-button color="primary" (click)="openAddClientDialog()">
+        <mat-icon>add</mat-icon>
+        Add your first client
+      </button>
+    </div>
+
+    <!-- Clients Grid -->
+    <div *ngIf="clients.length > 0" class="clients-grid">
+      <div *ngFor="let client of clients" class="client-card" [class.inactive]="!client.active">
+        <div class="client-header">
+          <div class="client-info">
+            <h3 class="client-name">{{ client.name }}</h3>
+            <div class="client-status">
+              <span class="status-dot" [class.active]="client.active"></span>
+              <span>{{ client.active ? 'Active' : 'Inactive' }}</span>
+            </div>
+          </div>
+          <button mat-icon-button [matMenuTriggerFor]="clientMenu" class="client-menu-button">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #clientMenu="matMenu">
+            <button mat-menu-item (click)="openDetailsDialog(client)">
+              <mat-icon>info</mat-icon>
+              <span>Details</span>
+            </button>
+            <button mat-menu-item (click)="openEditClientDialog(client)">
+              <mat-icon>edit</mat-icon>
+              <span>Edit</span>
+            </button>
+            <button mat-menu-item (click)="openLimitsDialog(client)">
+              <mat-icon>tune</mat-icon>
+              <span>Limits</span>
+            </button>
+          </mat-menu>
+        </div>
+
+        <div class="client-body">
+          <div class="client-field">
+            <label>API Key</label>
+            <div class="api-key-value">
+              <code>{{ client.apiKey }}</code>
+              <button mat-icon-button (click)="copyApiKey(client.apiKey)" matTooltip="Copy API key">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <div class="client-field">
+            <label>Priority</label>
+            <span class="priority-badge">{{ client.priority }}</span>
+          </div>
+
+          <div class="client-field">
+            <label>Created</label>
+            <span class="text-secondary">{{ formatDate(client.createdAt) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

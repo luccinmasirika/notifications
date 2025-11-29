@@ -1,5 +1,7 @@
 package com.irembo.notifications.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -19,6 +21,8 @@ import java.util.Map;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
      * Handle validation errors from @Valid annotations.
@@ -54,6 +58,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
+        logger.error("Unexpected error occurred", ex);
+
         Map<String, Object> response = new HashMap<>();
         response.put("error", "Internal Server Error");
         response.put("status", 500);

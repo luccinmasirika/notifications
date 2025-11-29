@@ -1,6 +1,7 @@
 package com.irembo.notifications.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.irembo.notifications.model.dto.ErrorResponse;
 import com.irembo.notifications.model.dto.RateDecision;
 import com.irembo.notifications.model.enums.DecisionType;
 import com.irembo.notifications.service.RateLimiterService;
@@ -37,9 +38,9 @@ public class RateLimiterFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
     private final Random random;
 
-    public RateLimiterFilter(RateLimiterService rateLimiterService) {
+    public RateLimiterFilter(RateLimiterService rateLimiterService, ObjectMapper objectMapper) {
         this.rateLimiterService = rateLimiterService;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
         this.random = new Random();
     }
 
@@ -88,13 +89,16 @@ public class RateLimiterFilter extends OncePerRequestFilter {
 
     /**
      * Determine if rate limiting should be skipped for this path.
-     * Skip for: health checks, actuator endpoints, admin endpoints, error pages.
+     * Skip for: health checks, actuator endpoints, admin endpoints, swagger/openapi, error pages.
      */
     private boolean shouldSkipRateLimiting(String path) {
         return path.equals("/health") ||
                path.equals("/actuator/health") ||
                path.startsWith("/actuator/") ||
                path.startsWith("/admin/") ||
+               path.startsWith("/swagger-ui") ||
+               path.startsWith("/v3/api-docs") ||
+               path.startsWith("/api-docs") ||
                path.startsWith("/error");
     }
 
@@ -135,26 +139,18 @@ public class RateLimiterFilter extends OncePerRequestFilter {
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        Map<String, Object> errorBody = new HashMap<>();
-        errorBody.put("error", "Rate limit exceeded");
-        errorBody.put("status", 429);
-        errorBody.put("message", String.format("Rate limit exceeded. Usage: %.2f%%", decision.usagePercent()));
-        errorBody.put("limit", decision.limit());
-        errorBody.put("remaining", decision.remaining());
-        errorBody.put("reset", decision.reset().getEpochSecond());
+        // Use standardized error response
+        ErrorResponse errorResponse = ErrorResponse.of(
+                "Rate limit exceeded",
+                String.format("Rate limit exceeded. Usage: %.2f%%", decision.usagePercent()),
+                429
+        );
 
-        if (decision.retryAt() != null) {
-            errorBody.put("retryAt", decision.retryAt().getEpochSecond());
-            long retryAfterSeconds = decision.retryAt().getEpochSecond() - Instant.now().getEpochSecond();
-            errorBody.put("retryAfter", Math.max(0, retryAfterSeconds));
-        }
-
-        String jsonResponse = objectMapper.writeValueAsString(errorBody);
+        String jsonResponse = objectMapper.writeValueAsString(errorResponse);
         response.getWriter().write(jsonResponse);
         response.getWriter().flush();
 
-        logger.warn("Rate limit hard reject: API key ending in {}, usage: {:.2f}%",
-                maskApiKey(extractApiKeyFromResponse(response)), decision.usagePercent());
+        logger.warn("Rate limit hard reject: usage: {}%", String.format("%.2f", decision.usagePercent()));
     }
 
     /**
@@ -164,7 +160,7 @@ public class RateLimiterFilter extends OncePerRequestFilter {
         int jitterMs = JITTER_MIN_MS + random.nextInt(JITTER_MAX_MS - JITTER_MIN_MS);
 
         try {
-            logger.info("Soft throttle applied: {}ms delay, usage: {:.2f}%", jitterMs, decision.usagePercent());
+            logger.info("Soft throttle applied: {}ms delay, usage: {}%", jitterMs, String.format("%.2f", decision.usagePercent()));
             Thread.sleep(jitterMs);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -187,23 +183,5 @@ public class RateLimiterFilter extends OncePerRequestFilter {
         String jsonResponse = objectMapper.writeValueAsString(errorBody);
         response.getWriter().write(jsonResponse);
         response.getWriter().flush();
-    }
-
-    /**
-     * Mask API key for logging (show only last 4 characters).
-     */
-    private String maskApiKey(String apiKey) {
-        if (apiKey == null || apiKey.length() <= 4) {
-            return "****";
-        }
-        return "****" + apiKey.substring(apiKey.length() - 4);
-    }
-
-    /**
-     * Extract API key from response headers for logging.
-     */
-    private String extractApiKeyFromResponse(HttpServletResponse response) {
-        // This is a placeholder - in production, you'd track the API key differently
-        return "unknown";
     }
 }

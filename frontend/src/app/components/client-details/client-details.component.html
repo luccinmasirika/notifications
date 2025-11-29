@@ -1,0 +1,186 @@
+<div class="container">
+    <div *ngIf="loading" class="loading-state">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading details...</p>
+    </div>
+
+  <div *ngIf="!loading && details">
+    <!-- Client Information Card -->
+    <mat-card class="info-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>person</mat-icon>
+          Client Information
+        </mat-card-title>
+        <div class="header-actions">
+          <button mat-button (click)="onEdit()" class="action-button">
+            <mat-icon>edit</mat-icon>
+            Edit
+          </button>
+        </div>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="info-grid">
+          <div class="info-item">
+            <label class="info-label">Name</label>
+            <div class="info-value">{{ details.client.name }}</div>
+          </div>
+          <div class="info-item">
+            <label class="info-label">ID</label>
+            <div class="info-value">{{ details.client.id }}</div>
+        </div>
+          <div class="info-item">
+            <label class="info-label">Priority</label>
+            <div class="info-value">{{ details.client.priority }}</div>
+        </div>
+          <div class="info-item">
+            <label class="info-label">Status</label>
+            <div class="info-value">
+              <span class="status-badge" [class.active]="details.client.active" [class.inactive]="!details.client.active">
+                {{ details.client.active ? 'Active' : 'Inactive' }}
+          </span>
+        </div>
+          </div>
+          <div class="info-item full-width">
+          <label class="info-label">API Key</label>
+          <div class="api-key-container">
+            <code class="api-key-code">{{ details.client.apiKey }}</code>
+        </div>
+      </div>
+    </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Status & Rate Limits Cards -->
+    <div class="cards-row" *ngIf="details.status || details.limit">
+      <!-- Current Status Card -->
+      <mat-card class="status-card" *ngIf="details.status">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>info</mat-icon>
+            Current Status
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="status-content" 
+               [class.status-blocked]="details.status.isBlocked" 
+           [class.status-throttled]="details.status.isSoftThrottled && !details.status.isBlocked"
+               [class.status-ok]="!details.status.isBlocked && !details.status.isSoftThrottled">
+            <mat-icon class="status-icon">{{ getStatusIcon(details.status) }}</mat-icon>
+            <div class="status-text">
+              <div class="status-message">{{ details.status.statusMessage }}</div>
+              <div class="status-subtitle" *ngIf="details.status.nextReset">
+                Resets {{ formatDate(details.status.nextReset) }}
+        </div>
+        </div>
+      </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Rate Limits Card -->
+      <mat-card class="limits-card" *ngIf="details.limit">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>tune</mat-icon>
+            Rate Limits
+          </mat-card-title>
+          <div class="header-actions">
+            <button mat-button (click)="onEditLimits()" class="action-button">
+              <mat-icon>edit</mat-icon>
+              Edit
+            </button>
+    </div>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="limits-grid">
+            <div class="limit-item">
+              <label class="limit-label">Window</label>
+              <div class="limit-value">{{ details.limit.windowSizeSeconds }}s</div>
+            </div>
+            <div class="limit-item">
+              <label class="limit-label">Max/window</label>
+              <div class="limit-value">{{ details.limit.maxRequestsPerWindow }}</div>
+            </div>
+            <div class="limit-item full">
+              <label class="limit-label">Monthly quota</label>
+              <div class="limit-value">{{ details.limit.monthlyQuota | number }}</div>
+            </div>
+            <div class="limit-item" *ngIf="details.limit.softThrottleThreshold !== null && details.limit.softThrottleThreshold !== undefined">
+              <label class="limit-label">Soft throttle</label>
+              <div class="limit-value">{{ (details.limit.softThrottleThreshold * 100).toFixed(0) }}%</div>
+        </div>
+            <div class="limit-item" *ngIf="details.limit.hardRejectThreshold !== null && details.limit.hardRejectThreshold !== undefined">
+              <label class="limit-label">Hard reject</label>
+              <div class="limit-value">{{ (details.limit.hardRejectThreshold * 100).toFixed(0) }}%</div>
+        </div>
+        </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Usage Statistics Card -->
+    <mat-card class="usage-card" *ngIf="details.windowUsage || details.monthlyUsage">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>bar_chart</mat-icon>
+          Usage Statistics
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="usage-grid">
+          <!-- Window Usage -->
+          <div class="usage-item" *ngIf="details.windowUsage">
+            <div class="usage-header">
+              <span class="usage-label">Window Usage</span>
+              <span class="usage-percent" [class.usage-high]="details.windowUsage.usagePercent >= 80">
+                {{ details.windowUsage.usagePercent.toFixed(1) }}%
+          </span>
+        </div>
+            <div class="usage-bar">
+          <div class="usage-bar-fill" 
+               [style.width.%]="Math.min(details.windowUsage.usagePercent, 100)"
+               [class.usage-bar-warning]="details.windowUsage.isSoftThrottled"
+               [class.usage-bar-danger]="details.windowUsage.isBlocked">
+          </div>
+        </div>
+            <div class="usage-footer">
+              <span>{{ details.windowUsage.currentCount }} / {{ details.windowUsage.maxRequests }}</span>
+              <span>{{ details.windowUsage.remaining }} remaining</span>
+      </div>
+    </div>
+
+          <!-- Monthly Usage -->
+          <div class="usage-item" *ngIf="details.monthlyUsage">
+            <div class="usage-header">
+              <span class="usage-label">Monthly Usage</span>
+              <span class="usage-percent" [class.usage-high]="details.monthlyUsage.usagePercent >= 80">
+                {{ details.monthlyUsage.usagePercent.toFixed(1) }}%
+          </span>
+        </div>
+            <div class="usage-bar">
+          <div class="usage-bar-fill" 
+               [style.width.%]="Math.min(details.monthlyUsage.usagePercent, 100)"
+               [class.usage-bar-warning]="details.monthlyUsage.isSoftThrottled"
+               [class.usage-bar-danger]="details.monthlyUsage.isBlocked">
+          </div>
+        </div>
+            <div class="usage-footer">
+              <span>{{ details.monthlyUsage.currentCount | number }} / {{ details.monthlyUsage.monthlyQuota | number }}</span>
+              <span>{{ details.monthlyUsage.remaining | number }} remaining</span>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- No Limits Message -->
+    <mat-card class="empty-card" *ngIf="!details.limit">
+      <mat-card-content>
+        <div class="empty-message">
+        <mat-icon>info</mat-icon>
+          <span>No rate limits configured for this client</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

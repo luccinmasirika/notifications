@@ -30,6 +30,22 @@ public class ClientLimit {
     @Column(name = "monthly_quota", nullable = false)
     private Integer monthlyQuota;
 
+    /**
+     * Soft throttle threshold (0.0 to 1.0).
+     * When usage reaches this percentage, requests are throttled with jitter delay.
+     * Default: 0.80 (80%)
+     */
+    @Column(name = "soft_throttle_threshold", nullable = false)
+    private Double softThrottleThreshold = 0.80;
+
+    /**
+     * Hard reject threshold (0.0 to 1.0).
+     * When usage reaches this percentage, requests are hard rejected with 429.
+     * Default: 1.00 (100%)
+     */
+    @Column(name = "hard_reject_threshold", nullable = false)
+    private Double hardRejectThreshold = 1.00;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

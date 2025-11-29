@@ -1,19 +1,2 @@
-<mat-toolbar color="primary" *ngIf="isAuthenticated">
-  <mat-icon>admin_panel_settings</mat-icon>
-  <span style="margin-left: 8px;">{{ title }}</span>
-  <span class="spacer"></span>
-  <button mat-button routerLink="/admin" routerLinkActive="active">
-    <mat-icon>admin_panel_settings</mat-icon>
-    Admin
-  </button>
-  <button mat-button routerLink="/client-test" routerLinkActive="active">
-    <mat-icon>speed</mat-icon>
-    Client Load Test
-  </button>
-  <button mat-icon-button (click)="logout()" title="Logout">
-    <mat-icon>logout</mat-icon>
-  </button>
-</mat-toolbar>
-
 <router-outlet></router-outlet>
 

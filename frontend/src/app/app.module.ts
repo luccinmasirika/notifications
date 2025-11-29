@@ -10,8 +10,15 @@ import { ClientListComponent } from './components/client-list/client-list.compon
 import { ClientDialogComponent } from './components/client-dialog/client-dialog.component';
 import { ClientLimitsDialogComponent } from './components/client-limits-dialog/client-limits-dialog.component';
 import { ClientDetailsDialogComponent } from './components/client-details-dialog/client-details-dialog.component';
+import { ClientFormComponent } from './components/client-form/client-form.component';
+import { ClientLimitsComponent } from './components/client-limits/client-limits.component';
+import { ClientDetailsComponent } from './components/client-details/client-details.component';
 import { LoginComponent } from './components/login/login.component';
 import { ClientTesterComponent } from './components/client-tester/client-tester.component';
+import { DashboardLayoutComponent } from './components/dashboard-layout/dashboard-layout.component';
+import { DashboardComponent } from './components/dashboard/dashboard.component';
+import { SystemLimitsComponent } from './components/system-limits/system-limits.component';
+import { SystemLimitDialogComponent } from './components/system-limit-dialog/system-limit-dialog.component';
 
 // Angular Material imports
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -28,6 +35,12 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatListModule } from '@angular/material/list';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatBadgeModule } from '@angular/material/badge';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @NgModule({
   declarations: [
@@ -36,8 +49,15 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
     ClientDialogComponent,
     ClientLimitsDialogComponent,
     ClientDetailsDialogComponent,
+    ClientFormComponent,
+    ClientLimitsComponent,
+    ClientDetailsComponent,
     LoginComponent,
-    ClientTesterComponent
+    ClientTesterComponent,
+    DashboardLayoutComponent,
+    DashboardComponent,
+    SystemLimitsComponent,
+    SystemLimitDialogComponent
   ],
   imports: [
     BrowserModule,
@@ -59,7 +79,13 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
     MatSnackBarModule,
     MatProgressSpinnerModule,
     MatChipsModule,
-    MatProgressBarModule
+    MatProgressBarModule,
+    MatSidenavModule,
+    MatListModule,
+    MatDividerModule,
+    MatBadgeModule,
+    MatMenuModule,
+    MatTooltipModule
   ],
   providers: [],
   bootstrap: [AppComponent]

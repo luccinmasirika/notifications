@@ -13,6 +13,8 @@ export interface ClientLimit {
   windowSizeSeconds: number;
   maxRequestsPerWindow: number;
   monthlyQuota: number;
+  softThrottleThreshold?: number;
+  hardRejectThreshold?: number;
   createdAt?: string;
 }
 
@@ -34,6 +36,8 @@ export interface ClientLimitRequest {
   windowSizeSeconds: number;
   maxRequestsPerWindow: number;
   monthlyQuota: number;
+  softThrottleThreshold?: number;
+  hardRejectThreshold?: number;
 }
 
 export interface WindowUsage {
@@ -70,5 +74,21 @@ export interface ClientDetailsResponse {
   windowUsage: WindowUsage | null;
   monthlyUsage: MonthlyUsage | null;
   status: ClientStatus;
+}
+
+export interface SystemLimit {
+  id?: number;
+  name: string;
+  windowSizeSeconds: number;
+  maxRequestsPerWindow: number;
+  active: boolean;
+  createdAt?: string;
+}
+
+export interface SystemLimitRequest {
+  name: string;
+  windowSizeSeconds: number;
+  maxRequestsPerWindow: number;
+  active?: boolean;
 }
 

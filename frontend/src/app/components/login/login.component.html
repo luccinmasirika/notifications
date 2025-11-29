@@ -1,19 +1,28 @@
+<div class="login-wrapper">
 <div class="login-container">
-  <mat-card class="login-card">
-    <mat-card-header>
-      <mat-card-title>
-        <mat-icon>admin_panel_settings</mat-icon>
-        Admin Login
-      </mat-card-title>
-    </mat-card-header>
-    
-    <mat-card-content>
-      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+    <div class="login-header">
+      <div class="logo">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="8" fill="#1a73e8"/>
+          <path d="M12 20L18 26L28 14" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1>Notifications</h1>
+      <p class="subtitle">Sign in to manage your notification services</p>
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
         <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Username</mat-label>
-          <input matInput formControlName="username" placeholder="Enter your username" autocomplete="username">
-          <mat-icon matPrefix>person</mat-icon>
-          <mat-error>{{ getErrorMessage('username') }}</mat-error>
+        <mat-label>Email or username</mat-label>
+        <input 
+          matInput 
+          formControlName="username" 
+          placeholder="Enter your email"
+          autocomplete="username"
+          type="text">
+        <mat-error *ngIf="loginForm.get('username')?.hasError('required')">
+          Please enter your username
+        </mat-error>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
@@ -24,31 +33,35 @@
             formControlName="password" 
             placeholder="Enter your password"
             autocomplete="current-password">
-          <mat-icon matPrefix>lock</mat-icon>
           <button 
             mat-icon-button 
             matSuffix 
+          type="button"
             (click)="hidePassword = !hidePassword" 
-            type="button"
-            [attr.aria-label]="'Hide password'"
-            [attr.aria-pressed]="hidePassword">
+          [attr.aria-label]="'Toggle password visibility'">
             <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
           </button>
-          <mat-error>{{ getErrorMessage('password') }}</mat-error>
+        <mat-error *ngIf="loginForm.get('password')?.hasError('required')">
+          Please enter your password
+        </mat-error>
         </mat-form-field>
 
         <button 
           mat-raised-button 
           color="primary" 
           type="submit" 
-          class="full-width login-button"
+        class="login-button full-width"
           [disabled]="loginForm.invalid || loading">
-          <mat-spinner *ngIf="loading" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
-          <span *ngIf="!loading">Login</span>
-          <span *ngIf="loading">Logging in...</span>
+        <span *ngIf="!loading">Sign in</span>
+        <span *ngIf="loading" class="loading-content">
+          <mat-spinner diameter="20"></mat-spinner>
+          <span>Signing in...</span>
+        </span>
         </button>
       </form>
-    </mat-card-content>
-  </mat-card>
-</div>
 
+    <div class="login-footer">
+      <p>Need help? <a href="#" class="link">Contact support</a></p>
+    </div>
+  </div>
+</div>

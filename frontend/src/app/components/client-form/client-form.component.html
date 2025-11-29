@@ -1,0 +1,86 @@
+<div class="container">
+  <mat-card class="form-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>{{ isEditMode ? 'edit' : 'add' }}</mat-icon>
+        {{ isEditMode ? 'Edit client' : 'New client' }}
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div *ngIf="loadingClient" class="loading-state">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Loading client...</p>
+      </div>
+
+      <form [formGroup]="clientForm" class="form-container" *ngIf="!loadingClient">
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Client name</mat-label>
+            <input matInput formControlName="name" placeholder="e.g. Production API">
+            <mat-error *ngIf="clientForm.get('name')?.hasError('required')">
+              Name is required
+            </mat-error>
+            <mat-error *ngIf="clientForm.get('name')?.hasError('minlength')">
+              Name must be at least 1 character
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>API Key</mat-label>
+            <input matInput formControlName="apiKey" placeholder="Enter a secure API key">
+            <button mat-icon-button matSuffix type="button" (click)="generateApiKey()" matTooltip="Generate random API key">
+              <mat-icon>auto_awesome</mat-icon>
+            </button>
+            <mat-hint>Minimum 16 characters. This will be used to authenticate requests.</mat-hint>
+            <mat-error *ngIf="clientForm.get('apiKey')?.hasError('required')">
+              API Key is required
+            </mat-error>
+            <mat-error *ngIf="clientForm.get('apiKey')?.hasError('minlength')">
+              API Key must be at least 16 characters
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Priority</mat-label>
+            <input matInput type="number" formControlName="priority" placeholder="0">
+            <mat-hint>Higher numbers have higher priority in the queue</mat-hint>
+            <mat-error *ngIf="clientForm.get('priority')?.hasError('required')">
+              Priority is required
+            </mat-error>
+            <mat-error *ngIf="clientForm.get('priority')?.hasError('min')">
+              Priority must be 0 or greater
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-checkbox formControlName="active">
+            Active - Client will be able to send notifications immediately
+          </mat-checkbox>
+        </div>
+
+        <div class="action-buttons">
+          <button mat-button (click)="onCancel()" [disabled]="loading">
+            Cancel
+          </button>
+          <button 
+            mat-raised-button 
+            color="primary" 
+            (click)="onSubmit()" 
+            [disabled]="clientForm.invalid || loading">
+            <span *ngIf="!loading">{{ isEditMode ? 'Save changes' : 'Create client' }}</span>
+            <span *ngIf="loading" class="loading-content">
+              <mat-spinner diameter="18"></mat-spinner>
+              <span>{{ isEditMode ? 'Saving...' : 'Creating...' }}</span>
+            </span>
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

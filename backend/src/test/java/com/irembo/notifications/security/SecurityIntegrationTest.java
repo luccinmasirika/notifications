@@ -53,7 +53,8 @@ class SecurityIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
-                .andExpect(jsonPath("$.message").value("API key is required"));
+                // Message now comes from APIKeyAuthFilter: "Missing X-API-KEY header"
+                .andExpect(jsonPath("$.message").value("Missing X-API-KEY header"));
     }
 
     @Test
@@ -71,7 +72,8 @@ class SecurityIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
-                .andExpect(jsonPath("$.message").value("API key is required"));
+                // Empty API key is treated the same as missing header
+                .andExpect(jsonPath("$.message").value("Missing X-API-KEY header"));
     }
 
     @Test

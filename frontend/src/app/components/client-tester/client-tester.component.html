@@ -115,7 +115,7 @@
         </div>
         <div class="limit-info-item">
           <span class="limit-label">Remaining:</span>
-          <span class="limit-value" [class.remaining-low]="currentRemaining !== undefined && currentRemaining < currentLimit * 0.2">
+          <span class="limit-value" [class.remaining-low]="currentRemaining !== undefined && currentLimit !== undefined && currentRemaining < currentLimit * 0.2">
             {{ currentRemaining !== undefined ? currentRemaining : '-' }}
           </span>
         </div>

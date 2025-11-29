@@ -1,0 +1,59 @@
+<div class="app-container">
+  <!-- Top Navigation Bar -->
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <div class="app-logo">
+        <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+          <rect width="40" height="40" rx="8" fill="#1a73e8"/>
+          <path d="M12 20L18 26L28 14" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="app-name">Notifications</span>
+      </div>
+    </div>
+
+    <div class="top-bar-right">
+      <button mat-icon-button (click)="logout()" matTooltip="Sign out">
+        <mat-icon>logout</mat-icon>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <div class="main-layout">
+    <!-- Side Navigation -->
+    <nav class="side-nav" [class.collapsed]="!sidebarOpen">
+      <div class="nav-items">
+        <a 
+          *ngFor="let item of menuItems"
+          class="nav-item"
+          [class.active]="isActiveRoute(item.path)"
+          [routerLink]="['./' + item.path]"
+          routerLinkActive="active">
+          <mat-icon>{{ item.icon }}</mat-icon>
+          <span class="nav-label">{{ item.label }}</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- Content Area -->
+    <main class="content-area">
+      <!-- Breadcrumb Navigation -->
+      <nav class="breadcrumb-nav" *ngIf="breadcrumbs.length > 0">
+        <ol class="breadcrumb-list">
+          <li *ngFor="let item of breadcrumbs; let last = last" class="breadcrumb-item">
+            <a 
+              *ngIf="!last && item.route" 
+              [routerLink]="item.route" 
+              class="breadcrumb-link"
+              (click)="navigateBreadcrumb(item)">
+              {{ item.label }}
+            </a>
+            <span *ngIf="last || !item.route" class="breadcrumb-current">{{ item.label }}</span>
+            <mat-icon *ngIf="!last" class="breadcrumb-separator">chevron_right</mat-icon>
+          </li>
+        </ol>
+      </nav>
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

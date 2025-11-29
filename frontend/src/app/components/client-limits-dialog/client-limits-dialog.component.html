@@ -1,40 +1,156 @@
-<h2 mat-dialog-title>Edit Client Limits</h2>
-
-<mat-dialog-content>
-  <div *ngIf="loadingLimits" style="text-align: center; padding: 20px;">
-    <mat-spinner diameter="40"></mat-spinner>
-    <p>Loading existing limits...</p>
+<div class="dialog-wrapper">
+  <div class="dialog-header">
+    <h2 class="dialog-title">Rate limits</h2>
+    <button mat-icon-button class="close-button" (click)="onCancel()" type="button">
+      <mat-icon>close</mat-icon>
+    </button>
   </div>
 
-  <form [formGroup]="limitsForm" (ngSubmit)="onSubmit()" *ngIf="!loadingLimits">
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Window Size (seconds)</mat-label>
-      <input matInput type="number" formControlName="windowSizeSeconds" placeholder="e.g., 60">
-      <mat-hint>The time window in seconds for rate limiting</mat-hint>
-      <mat-error>{{ getErrorMessage('windowSizeSeconds') }}</mat-error>
-    </mat-form-field>
+  <div class="dialog-body">
+    <div *ngIf="loadingLimits" class="loading-state">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading limits...</p>
+    </div>
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Max Requests Per Window</mat-label>
-      <input matInput type="number" formControlName="maxRequestsPerWindow" placeholder="e.g., 100">
-      <mat-hint>Maximum number of requests allowed in the time window</mat-hint>
-      <mat-error>{{ getErrorMessage('maxRequestsPerWindow') }}</mat-error>
-    </mat-form-field>
+    <form [formGroup]="limitsForm" class="form-container" *ngIf="!loadingLimits">
+      <div class="form-section">
+        <div class="section-header">
+          <h3 class="section-title">Window limits</h3>
+          <p class="section-description">Control how many requests are allowed in a time window</p>
+        </div>
 
+        <div class="form-field-group">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Window size (seconds)</mat-label>
+            <input matInput type="number" formControlName="windowSizeSeconds" placeholder="60">
+            <mat-hint>Time period for the rate limit window</mat-hint>
+            <mat-error *ngIf="limitsForm.get('windowSizeSeconds')?.hasError('required')">
+              Window size is required
+            </mat-error>
+            <mat-error *ngIf="limitsForm.get('windowSizeSeconds')?.hasError('min')">
+              Must be at least 1 second
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-field-group">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Max requests per window</mat-label>
+            <input matInput type="number" formControlName="maxRequestsPerWindow" placeholder="100">
+            <mat-hint>Maximum number of requests allowed in the window</mat-hint>
+            <mat-error *ngIf="limitsForm.get('maxRequestsPerWindow')?.hasError('required')">
+              Max requests is required
+            </mat-error>
+            <mat-error *ngIf="limitsForm.get('maxRequestsPerWindow')?.hasError('min')">
+              Must be at least 1 request
+            </mat-error>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <div class="form-section">
+        <div class="section-header">
+          <h3 class="section-title">Monthly quota</h3>
+          <p class="section-description">Total requests allowed per month</p>
+        </div>
+
+        <div class="form-field-group">
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Monthly Quota</mat-label>
-      <input matInput type="number" formControlName="monthlyQuota" placeholder="e.g., 10000">
-      <mat-hint>Total number of requests allowed per month</mat-hint>
-      <mat-error>{{ getErrorMessage('monthlyQuota') }}</mat-error>
+            <mat-label>Monthly quota</mat-label>
+            <input matInput type="number" formControlName="monthlyQuota" placeholder="10000">
+            <mat-hint>Total requests allowed in a calendar month</mat-hint>
+            <mat-error *ngIf="limitsForm.get('monthlyQuota')?.hasError('required')">
+              Monthly quota is required
+            </mat-error>
+            <mat-error *ngIf="limitsForm.get('monthlyQuota')?.hasError('min')">
+              Must be at least 1 request
+            </mat-error>
     </mat-form-field>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <div class="form-section">
+        <div class="section-header">
+          <h3 class="section-title">Throttle thresholds</h3>
+          <p class="section-description">Configure when throttling and rejection should occur (as percentage of limit)</p>
+        </div>
+
+        <div class="thresholds-grid">
+          <div class="form-field-group">
+    <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Soft throttle threshold</mat-label>
+              <input matInput type="number" 
+                     formControlName="softThrottleThresholdPercent" 
+                     placeholder="80"
+                     step="1"
+                     min="0"
+                     max="100">
+              <span matSuffix>%</span>
+              <mat-hint>Start throttling at this percentage</mat-hint>
+              <mat-error *ngIf="limitsForm.get('softThrottleThresholdPercent')?.hasError('min')">
+                Must be between 0% and 100%
+              </mat-error>
+              <mat-error *ngIf="limitsForm.get('softThrottleThresholdPercent')?.hasError('max')">
+                Must not exceed 100%
+              </mat-error>
+    </mat-form-field>
+          </div>
+
+          <div class="form-field-group">
+    <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Hard reject threshold</mat-label>
+              <input matInput type="number" 
+                     formControlName="hardRejectThresholdPercent" 
+                     placeholder="100"
+                     step="1"
+                     min="0"
+                     max="100">
+              <span matSuffix>%</span>
+              <mat-hint>Start rejecting requests at this percentage</mat-hint>
+              <mat-error *ngIf="limitsForm.get('hardRejectThresholdPercent')?.hasError('min')">
+                Must be between 0% and 100%
+              </mat-error>
+              <mat-error *ngIf="limitsForm.get('hardRejectThresholdPercent')?.hasError('max')">
+                Must not exceed 100%
+              </mat-error>
+    </mat-form-field>
+          </div>
+        </div>
+
+        <div class="threshold-info">
+          <mat-icon>info</mat-icon>
+          <div class="info-text">
+            <strong>How it works:</strong>
+            <ul>
+              <li>Below soft throttle: Requests are allowed normally</li>
+              <li>At soft throttle: Requests are delayed with jitter</li>
+              <li>At hard reject: Requests are rejected with 429 status</li>
+            </ul>
+          </div>
+        </div>
+      </div>
   </form>
-</mat-dialog-content>
+  </div>
 
-<mat-dialog-actions class="action-buttons">
-  <button mat-button (click)="onCancel()" [disabled]="loading || loadingLimits">Cancel</button>
-  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="limitsForm.invalid || loading || loadingLimits">
-    <mat-spinner *ngIf="loading" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
-    Update Limits
+  <div class="dialog-actions" *ngIf="!loadingLimits">
+    <button mat-button (click)="onCancel()" [disabled]="loading" class="cancel-button">
+      Cancel
+    </button>
+    <button 
+      mat-raised-button 
+      color="primary" 
+      (click)="onSubmit()" 
+      [disabled]="limitsForm.invalid || loading"
+      class="submit-button">
+      <span *ngIf="!loading">Save limits</span>
+      <span *ngIf="loading" class="loading-content">
+        <mat-spinner diameter="18"></mat-spinner>
+        <span>Saving...</span>
+      </span>
   </button>
-</mat-dialog-actions>
-
+  </div>
+</div>

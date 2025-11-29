@@ -1,180 +1,158 @@
-<h2 mat-dialog-title>
-  <mat-icon>visibility</mat-icon>
-  Client Details
-</h2>
-
-<mat-dialog-content>
-  <div *ngIf="loading" style="text-align: center; padding: 20px;">
-    <mat-spinner diameter="40"></mat-spinner>
-    <p>Loading client details...</p>
+<div class="dialog-wrapper">
+  <div class="dialog-header">
+    <h2 class="dialog-title">Client details</h2>
+    <button mat-icon-button class="close-button" (click)="onClose()" type="button">
+      <mat-icon>close</mat-icon>
+    </button>
   </div>
 
-  <div *ngIf="!loading && details">
-    <!-- Client Information -->
-    <div class="details-section">
-      <h3>Client Information</h3>
-      <div class="detail-grid">
-        <div class="detail-item">
-          <span class="detail-label">ID:</span>
-          <span class="detail-value">{{ details.client.id }}</span>
+  <div class="dialog-body">
+    <div *ngIf="loading" class="loading-state">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading details...</p>
+    </div>
+
+    <div *ngIf="!loading && details" class="details-container">
+      <!-- Client Info Section - Compact -->
+      <div class="info-section compact">
+        <div class="info-grid-compact">
+          <div class="info-item-compact">
+            <label class="info-label">Name</label>
+            <div class="info-value">{{ details.client.name }}</div>
+          </div>
+          <div class="info-item-compact">
+            <label class="info-label">ID</label>
+            <div class="info-value">{{ details.client.id }}</div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Name:</span>
-          <span class="detail-value">{{ details.client.name }}</span>
+          <div class="info-item-compact">
+            <label class="info-label">Priority</label>
+            <div class="info-value">{{ details.client.priority }}</div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">API Key:</span>
-          <span class="detail-value">
-            <code>{{ details.client.apiKey }}</code>
+          <div class="info-item-compact">
+            <label class="info-label">Status</label>
+            <div class="info-value">
+              <span class="status-badge" [class.active]="details.client.active" [class.inactive]="!details.client.active">
+                {{ details.client.active ? 'Active' : 'Inactive' }}
           </span>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Priority:</span>
-          <span class="detail-value">{{ details.client.priority }}</span>
+          </div>
         </div>
-        <div class="detail-item">
-          <span class="detail-label">Status:</span>
-          <span class="detail-value">
-            <mat-chip [class.status-active]="details.client.active" [class.status-inactive]="!details.client.active">
-              {{ details.client.active ? 'Active' : 'Inactive' }}
-            </mat-chip>
-          </span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Created At:</span>
-          <span class="detail-value">{{ formatDate(details.client.createdAt) }}</span>
+        <div class="info-item-full">
+          <label class="info-label">API Key</label>
+          <div class="api-key-container">
+            <code class="api-key-code">{{ details.client.apiKey }}</code>
         </div>
       </div>
     </div>
 
+      <!-- Current Status & Rate Limits Side by Side -->
+      <div class="two-column-section">
     <!-- Current Status -->
-    <div class="details-section" *ngIf="details.status">
-      <h3>Current Status</h3>
-      <div class="status-card" [class.status-blocked]="details.status.isBlocked" 
+        <div class="info-section compact" *ngIf="details.status">
+          <h3 class="section-title-small">Status</h3>
+          <div class="status-card-compact" 
+               [class.status-blocked]="details.status.isBlocked" 
            [class.status-throttled]="details.status.isSoftThrottled && !details.status.isBlocked"
-           [class.status-active]="!details.status.isBlocked && !details.status.isSoftThrottled">
-        <div class="status-header">
-          <mat-icon>{{ getStatusIcon(details.status) }}</mat-icon>
-          <span class="status-message">{{ details.status.statusMessage }}</span>
+               [class.status-ok]="!details.status.isBlocked && !details.status.isSoftThrottled">
+            <mat-icon class="status-icon-small">{{ getStatusIcon(details.status) }}</mat-icon>
+            <div class="status-text-compact">
+              <div class="status-message-small">{{ details.status.statusMessage }}</div>
+              <div class="status-subtitle-small" *ngIf="details.status.nextReset">
+                Resets {{ formatDate(details.status.nextReset) }}
         </div>
-        <div class="status-details" *ngIf="details.status.nextReset">
-          <span class="detail-label">Next Reset:</span>
-          <span class="detail-value">{{ formatDate(details.status.nextReset) }}</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Rate Limit Configuration -->
-    <div class="details-section" *ngIf="details.limit">
-      <h3>Rate Limit Configuration</h3>
-      <div class="detail-grid">
-        <div class="detail-item">
-          <span class="detail-label">Window Size:</span>
-          <span class="detail-value">{{ details.limit.windowSizeSeconds }} seconds</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Max Requests Per Window:</span>
-          <span class="detail-value">{{ details.limit.maxRequestsPerWindow }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Monthly Quota:</span>
-          <span class="detail-value">{{ details.limit.monthlyQuota }}</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Created At:</span>
-          <span class="detail-value">{{ formatDate(details.limit.createdAt) }}</span>
         </div>
       </div>
     </div>
 
-    <!-- Window Usage Statistics -->
-    <div class="details-section" *ngIf="details.windowUsage">
-      <h3>Window Usage Statistics</h3>
-      <div class="usage-card">
-        <div class="usage-header">
-          <span class="usage-label">Current Usage:</span>
-          <span class="usage-value" [class.usage-high]="details.windowUsage.usagePercent >= 80">
-            {{ details.windowUsage.currentCount }} / {{ details.windowUsage.maxRequests }}
-            ({{ details.windowUsage.usagePercent.toFixed(1) }}%)
+        <!-- Rate Limits -->
+        <div class="info-section compact" *ngIf="details.limit">
+          <h3 class="section-title-small">Rate limits</h3>
+          <div class="limits-grid">
+            <div class="limit-item">
+              <label class="limit-label">Window</label>
+              <div class="limit-value">{{ details.limit.windowSizeSeconds }}s</div>
+            </div>
+            <div class="limit-item">
+              <label class="limit-label">Max/window</label>
+              <div class="limit-value">{{ details.limit.maxRequestsPerWindow }}</div>
+            </div>
+            <div class="limit-item full">
+              <label class="limit-label">Monthly quota</label>
+              <div class="limit-value">{{ details.limit.monthlyQuota | number }}</div>
+            </div>
+            <div class="limit-item" *ngIf="details.limit.softThrottleThreshold !== null && details.limit.softThrottleThreshold !== undefined">
+              <label class="limit-label">Soft throttle</label>
+              <div class="limit-value">{{ (details.limit.softThrottleThreshold * 100).toFixed(0) }}%</div>
+        </div>
+            <div class="limit-item" *ngIf="details.limit.hardRejectThreshold !== null && details.limit.hardRejectThreshold !== undefined">
+              <label class="limit-label">Hard reject</label>
+              <div class="limit-value">{{ (details.limit.hardRejectThreshold * 100).toFixed(0) }}%</div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+      <!-- Usage Statistics - Compact -->
+      <div class="info-section compact">
+        <h3 class="section-title-small">Usage</h3>
+        <div class="usage-cards-compact">
+          <!-- Window Usage -->
+          <div class="usage-card-compact" *ngIf="details.windowUsage">
+            <div class="usage-header-compact">
+              <span class="usage-label-compact">Window</span>
+              <span class="usage-percent-compact" [class.usage-high]="details.windowUsage.usagePercent >= 80">
+                {{ details.windowUsage.usagePercent.toFixed(1) }}%
           </span>
         </div>
-        <div class="usage-bar">
+            <div class="usage-bar-compact">
           <div class="usage-bar-fill" 
                [style.width.%]="Math.min(details.windowUsage.usagePercent, 100)"
                [class.usage-bar-warning]="details.windowUsage.isSoftThrottled"
                [class.usage-bar-danger]="details.windowUsage.isBlocked">
           </div>
         </div>
-        <div class="detail-grid">
-          <div class="detail-item">
-            <span class="detail-label">Remaining:</span>
-            <span class="detail-value">{{ details.windowUsage.remaining }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Window Size:</span>
-            <span class="detail-value">{{ details.windowUsage.windowSizeSeconds }}s</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Reset Time:</span>
-            <span class="detail-value">{{ formatDate(details.windowUsage.resetTime) }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Status:</span>
-            <span class="detail-value">
-              <mat-chip *ngIf="details.windowUsage.isBlocked" class="status-blocked-chip">Blocked</mat-chip>
-              <mat-chip *ngIf="details.windowUsage.isSoftThrottled && !details.windowUsage.isBlocked" class="status-throttled-chip">Soft Throttled</mat-chip>
-              <mat-chip *ngIf="!details.windowUsage.isBlocked && !details.windowUsage.isSoftThrottled" class="status-ok-chip">OK</mat-chip>
-            </span>
-          </div>
-        </div>
+            <div class="usage-footer-compact">
+              <span>{{ details.windowUsage.currentCount }} / {{ details.windowUsage.maxRequests }}</span>
+              <span>{{ details.windowUsage.remaining }} left</span>
       </div>
     </div>
 
-    <!-- Monthly Usage Statistics -->
-    <div class="details-section" *ngIf="details.monthlyUsage">
-      <h3>Monthly Usage Statistics</h3>
-      <div class="usage-card">
-        <div class="usage-header">
-          <span class="usage-label">Current Usage:</span>
-          <span class="usage-value" [class.usage-high]="details.monthlyUsage.usagePercent >= 80">
-            {{ details.monthlyUsage.currentCount }} / {{ details.monthlyUsage.monthlyQuota }}
-            ({{ details.monthlyUsage.usagePercent.toFixed(1) }}%)
+          <!-- Monthly Usage -->
+          <div class="usage-card-compact" *ngIf="details.monthlyUsage">
+            <div class="usage-header-compact">
+              <span class="usage-label-compact">Monthly</span>
+              <span class="usage-percent-compact" [class.usage-high]="details.monthlyUsage.usagePercent >= 80">
+                {{ details.monthlyUsage.usagePercent.toFixed(1) }}%
           </span>
         </div>
-        <div class="usage-bar">
+            <div class="usage-bar-compact">
           <div class="usage-bar-fill" 
                [style.width.%]="Math.min(details.monthlyUsage.usagePercent, 100)"
                [class.usage-bar-warning]="details.monthlyUsage.isSoftThrottled"
                [class.usage-bar-danger]="details.monthlyUsage.isBlocked">
           </div>
         </div>
-        <div class="detail-grid">
-          <div class="detail-item">
-            <span class="detail-label">Remaining:</span>
-            <span class="detail-value">{{ details.monthlyUsage.remaining }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">Status:</span>
-            <span class="detail-value">
-              <mat-chip *ngIf="details.monthlyUsage.isBlocked" class="status-blocked-chip">Blocked</mat-chip>
-              <mat-chip *ngIf="details.monthlyUsage.isSoftThrottled && !details.monthlyUsage.isBlocked" class="status-throttled-chip">Soft Throttled</mat-chip>
-              <mat-chip *ngIf="!details.monthlyUsage.isBlocked && !details.monthlyUsage.isSoftThrottled" class="status-ok-chip">OK</mat-chip>
-            </span>
+            <div class="usage-footer-compact">
+              <span>{{ details.monthlyUsage.currentCount | number }} / {{ details.monthlyUsage.monthlyQuota | number }}</span>
+              <span>{{ details.monthlyUsage.remaining | number }} left</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- No Limits Message -->
-    <div class="details-section" *ngIf="!details.limit">
-      <div class="no-limits">
+      <!-- No Limits -->
+      <div class="info-section compact" *ngIf="!details.limit">
+        <div class="empty-info-compact">
         <mat-icon>info</mat-icon>
-        <span>No rate limits configured for this client.</span>
+          <span>No rate limits configured</span>
+        </div>
       </div>
     </div>
   </div>
-</mat-dialog-content>
 
-<mat-dialog-actions class="action-buttons">
-  <button mat-button (click)="onClose()">Close</button>
-</mat-dialog-actions>
+  <div class="dialog-actions">
+    <button mat-button (click)="onClose()" class="close-action-button">
+      Close
+    </button>
+  </div>
+</div>

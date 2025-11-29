@@ -36,9 +36,9 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
     private final ClientRepository clientRepository;
     private final ObjectMapper objectMapper;
 
-    public APIKeyAuthFilter(ClientRepository clientRepository) {
+    public APIKeyAuthFilter(ClientRepository clientRepository, ObjectMapper objectMapper) {
         this.clientRepository = clientRepository;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -96,13 +96,16 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
 
     /**
      * Determine if API key authentication should be skipped for this path.
-     * Skip for: health checks, actuator endpoints, admin endpoints, error pages.
+     * Skip for: health checks, actuator endpoints, admin endpoints, swagger/openapi, error pages.
      */
     private boolean shouldSkipApiKeyAuth(String path) {
         return path.equals("/health") ||
                path.equals("/actuator/health") ||
                path.startsWith("/actuator/") ||
                path.startsWith("/admin/") ||
+               path.startsWith("/swagger-ui") ||
+               path.startsWith("/v3/api-docs") ||
+               path.startsWith("/api-docs") ||
                path.startsWith("/error");
     }
 

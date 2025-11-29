@@ -1,5 +1,7 @@
 package com.irembo.notifications.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.irembo.notifications.infra.db.entity.Client;
 import com.irembo.notifications.infra.db.repository.ClientRepository;
 import jakarta.servlet.FilterChain;
@@ -41,7 +43,10 @@ class APIKeyAuthFilterTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        filter = new APIKeyAuthFilter(clientRepository);
+        // Use a real ObjectMapper for testing with JSR310 support to ensure proper JSON serialization
+        ObjectMapper testObjectMapper = new ObjectMapper();
+        testObjectMapper.registerModule(new JavaTimeModule());
+        filter = new APIKeyAuthFilter(clientRepository, testObjectMapper);
 
         // Setup response writer (lenient as not all tests write responses)
         responseWriter = new StringWriter();

@@ -188,13 +188,11 @@ class AdminServiceTest {
 
         when(clientLimitRepository.save(any(ClientLimit.class))).thenReturn(testLimit);
         when(clientRepository.findById(999L)).thenReturn(Optional.empty());
-        when(cacheManager.getCache("clientConfigs")).thenReturn(cache);
-        doNothing().when(cache).clear();
 
         ClientLimit result = adminService.updateClientLimit(testLimit);
 
         assertNotNull(result);
-        // Cache should still be cleared even if client not found
-        verify(cache).clear();
+        // When client is not found, cache eviction is handled via @CacheEvict and
+        // no direct interaction with the underlying Cache is required here.
     }
 }

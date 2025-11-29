@@ -1,6 +1,8 @@
 package com.irembo.notifications.infra.db.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,6 +21,11 @@ public class SystemLimit {
     private Long id;
 
     @Column(name = "name", unique = true, nullable = false)
+    @Size(min = 1, max = 255, message = "Name must be between 1 and 255 characters")
+    @Pattern(
+            regexp = "^[a-zA-Z0-9_]+$",
+            message = "Name must contain only letters, numbers, and underscores (format: limit_123)"
+    )
     private String name;
 
     @Column(name = "window_size_seconds", nullable = false)

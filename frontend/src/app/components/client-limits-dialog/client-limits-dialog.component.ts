@@ -27,7 +27,9 @@ export class ClientLimitsDialogComponent implements OnInit {
     this.limitsForm = this.fb.group({
       windowSizeSeconds: [60, [Validators.required, Validators.min(1)]],
       maxRequestsPerWindow: [100, [Validators.required, Validators.min(1)]],
-      monthlyQuota: [10000, [Validators.required, Validators.min(1)]]
+      monthlyQuota: [10000, [Validators.required, Validators.min(1)]],
+      softThrottleThresholdPercent: [80, [Validators.min(0), Validators.max(100)]],
+      hardRejectThresholdPercent: [100, [Validators.min(0), Validators.max(100)]]
     });
   }
 
@@ -42,7 +44,9 @@ export class ClientLimitsDialogComponent implements OnInit {
         this.limitsForm.patchValue({
           windowSizeSeconds: limit.windowSizeSeconds,
           maxRequestsPerWindow: limit.maxRequestsPerWindow,
-          monthlyQuota: limit.monthlyQuota
+          monthlyQuota: limit.monthlyQuota,
+          softThrottleThresholdPercent: limit.softThrottleThreshold ? (limit.softThrottleThreshold * 100) : 80,
+          hardRejectThresholdPercent: limit.hardRejectThreshold ? (limit.hardRejectThreshold * 100) : 100
         });
         this.loadingLimits = false;
       },
@@ -62,10 +66,13 @@ export class ClientLimitsDialogComponent implements OnInit {
   onSubmit(): void {
     if (this.limitsForm.valid) {
       this.loading = true;
+      const formValue = this.limitsForm.value;
       const request: ClientLimitRequest = {
-        windowSizeSeconds: this.limitsForm.value.windowSizeSeconds,
-        maxRequestsPerWindow: this.limitsForm.value.maxRequestsPerWindow,
-        monthlyQuota: this.limitsForm.value.monthlyQuota
+        windowSizeSeconds: formValue.windowSizeSeconds,
+        maxRequestsPerWindow: formValue.maxRequestsPerWindow,
+        monthlyQuota: formValue.monthlyQuota,
+        softThrottleThreshold: (formValue.softThrottleThresholdPercent ?? 80) / 100,
+        hardRejectThreshold: (formValue.hardRejectThresholdPercent ?? 100) / 100
       };
 
       this.adminService.updateClientLimits(this.clientId, request).subscribe({
@@ -96,7 +103,9 @@ export class ClientLimitsDialogComponent implements OnInit {
     if (field?.hasError('min')) {
       return `${fieldName} must be at least ${field.errors?.['min'].min}`;
     }
+    if (field?.hasError('max')) {
+      return `${fieldName} must not exceed ${field.errors?.['max'].max}`;
+    }
     return '';
   }
 }
-

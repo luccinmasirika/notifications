@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Client, ClientLimit, CreateClientRequest, UpdateClientRequest, ClientLimitRequest, ClientDetailsResponse } from '../models/client.model';
+import { Client, ClientLimit, CreateClientRequest, UpdateClientRequest, ClientLimitRequest, ClientDetailsResponse, SystemLimit, SystemLimitRequest } from '../models/client.model';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -63,6 +63,18 @@ export class AdminService {
 
   getClientDetails(clientId: number): Observable<ClientDetailsResponse> {
     return this.http.get<ClientDetailsResponse>(`${this.apiUrl}/clients/${clientId}/details`, { headers: this.getHeaders() });
+  }
+
+  getSystemStatus(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/status`, { headers: this.getHeaders() });
+  }
+
+  getSystemLimits(): Observable<SystemLimit[]> {
+    return this.http.get<SystemLimit[]>(`${this.apiUrl}/system-limits`, { headers: this.getHeaders() });
+  }
+
+  createOrUpdateSystemLimit(limit: SystemLimitRequest | SystemLimit): Observable<SystemLimit> {
+    return this.http.post<SystemLimit>(`${this.apiUrl}/system-limits`, limit, { headers: this.getHeaders() });
   }
 }
 

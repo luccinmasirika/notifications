@@ -10,6 +10,8 @@ import com.irembo.notifications.infra.redis.RedisCounterRepository;
 import com.irembo.notifications.model.dto.RateDecision;
 import com.irembo.notifications.model.dto.UsageInfo;
 import com.irembo.notifications.model.enums.DecisionType;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.Cacheable;
@@ -23,23 +25,41 @@ public class RateLimiterService {
 
     private static final Logger logger = LoggerFactory.getLogger(RateLimiterService.class);
 
-    private static final double SOFT_THROTTLE_THRESHOLD = 0.80; // 80%
-    private static final double HARD_REJECT_THRESHOLD = 1.00;   // 100%
+    // Default thresholds (used as fallback if not configured)
+    private static final double DEFAULT_SOFT_THROTTLE_THRESHOLD = 0.80; // 80%
+    private static final double DEFAULT_HARD_REJECT_THRESHOLD = 1.00;   // 100%
 
     private final RedisCounterRepository redisCounter;
     private final ClientRepository clientRepository;
     private final ClientLimitRepository clientLimitRepository;
     private final SystemLimitRepository systemLimitRepository;
 
+    // Metrics
+    private final Counter softThrottleCounter;
+    private final Counter hardRejectCounter;
+    private final Counter invalidApiKeyCounter;
+
     public RateLimiterService(
             RedisCounterRepository redisCounter,
             ClientRepository clientRepository,
             ClientLimitRepository clientLimitRepository,
-            SystemLimitRepository systemLimitRepository) {
+            SystemLimitRepository systemLimitRepository,
+            MeterRegistry meterRegistry) {
         this.redisCounter = redisCounter;
         this.clientRepository = clientRepository;
         this.clientLimitRepository = clientLimitRepository;
         this.systemLimitRepository = systemLimitRepository;
+
+        // Initialize metrics counters
+        this.softThrottleCounter = Counter.builder("ratelimiter.soft_throttle")
+                .description("Number of requests that were soft throttled")
+                .register(meterRegistry);
+        this.hardRejectCounter = Counter.builder("ratelimiter.hard_reject")
+                .description("Number of requests that were hard rejected")
+                .register(meterRegistry);
+        this.invalidApiKeyCounter = Counter.builder("ratelimiter.invalid_api_key")
+                .description("Number of requests with invalid API keys")
+                .register(meterRegistry);
     }
 
     /**
@@ -54,6 +74,8 @@ public class RateLimiterService {
         Optional<Client> clientOpt = findClientByApiKey(apiKey);
         if (clientOpt.isEmpty() || !clientOpt.get().getActive()) {
             logger.warn("Invalid or inactive API key: {}", apiKey);
+            invalidApiKeyCounter.increment();
+            hardRejectCounter.increment();
             return RateDecision.hardReject(0, Instant.now().plusSeconds(60), 100.0);
         }
 
@@ -63,6 +85,7 @@ public class RateLimiterService {
         Optional<ClientLimit> clientLimitOpt = findClientLimit(client.getId());
         if (clientLimitOpt.isEmpty()) {
             logger.warn("No rate limit configuration found for client: {}", client.getId());
+            hardRejectCounter.increment();
             return RateDecision.hardReject(0, Instant.now().plusSeconds(60), 100.0);
         }
 
@@ -107,6 +130,7 @@ public class RateLimiterService {
 
     /**
      * Check global system-wide rate limit.
+     * Note: Global limits use default thresholds (not configurable per-client).
      */
     private RateDecision checkGlobalLimit(SystemLimit globalLimit) {
         long currentCount = redisCounter.getGlobalWindow(globalLimit.getWindowSizeSeconds());
@@ -115,13 +139,15 @@ public class RateLimiterService {
 
         Instant resetTime = redisCounter.getWindowResetTime(globalLimit.getWindowSizeSeconds());
 
-        if (usagePercent >= HARD_REJECT_THRESHOLD) {
+        if (usagePercent >= DEFAULT_HARD_REJECT_THRESHOLD) {
             logger.warn("Global rate limit exceeded: {} / {}", currentCount, maxRequests);
+            hardRejectCounter.increment();
             return RateDecision.hardReject(maxRequests, resetTime, usagePercent * 100);
         }
 
-        if (usagePercent >= SOFT_THROTTLE_THRESHOLD) {
+        if (usagePercent >= DEFAULT_SOFT_THROTTLE_THRESHOLD) {
             logger.info("Global rate limit soft throttle: {} / {}", currentCount, maxRequests);
+            softThrottleCounter.increment();
             return RateDecision.softThrottle(maxRequests, maxRequests - currentCount, resetTime, usagePercent * 100);
         }
 
@@ -130,6 +156,7 @@ public class RateLimiterService {
 
     /**
      * Check client-specific window-based rate limit.
+     * Uses configurable thresholds from ClientLimit entity.
      */
     private RateDecision checkClientWindowLimit(String clientId, ClientLimit clientLimit) {
         long currentCount = redisCounter.getWindowCounter(clientId, clientLimit.getWindowSizeSeconds());
@@ -138,13 +165,25 @@ public class RateLimiterService {
 
         Instant resetTime = redisCounter.getWindowResetTime(clientLimit.getWindowSizeSeconds());
 
-        if (usagePercent >= HARD_REJECT_THRESHOLD) {
-            logger.warn("Client {} window limit exceeded: {} / {}", clientId, currentCount, maxRequests);
+        // Use client-specific thresholds (with defaults if not set)
+        double hardRejectThreshold = clientLimit.getHardRejectThreshold() != null
+            ? clientLimit.getHardRejectThreshold()
+            : DEFAULT_HARD_REJECT_THRESHOLD;
+        double softThrottleThreshold = clientLimit.getSoftThrottleThreshold() != null
+            ? clientLimit.getSoftThrottleThreshold()
+            : DEFAULT_SOFT_THROTTLE_THRESHOLD;
+
+        if (usagePercent >= hardRejectThreshold) {
+            logger.warn("Client {} window limit exceeded: {} / {} (threshold: {}%)",
+                clientId, currentCount, maxRequests, hardRejectThreshold * 100);
+            hardRejectCounter.increment();
             return RateDecision.hardReject(maxRequests, resetTime, usagePercent * 100);
         }
 
-        if (usagePercent >= SOFT_THROTTLE_THRESHOLD) {
-            logger.info("Client {} window limit soft throttle: {} / {}", clientId, currentCount, maxRequests);
+        if (usagePercent >= softThrottleThreshold) {
+            logger.info("Client {} window limit soft throttle: {} / {} (threshold: {}%)",
+                clientId, currentCount, maxRequests, softThrottleThreshold * 100);
+            softThrottleCounter.increment();
             return RateDecision.softThrottle(maxRequests, maxRequests - currentCount, resetTime, usagePercent * 100);
         }
 
@@ -153,6 +192,7 @@ public class RateLimiterService {
 
     /**
      * Check client-specific monthly quota.
+     * Uses configurable thresholds from ClientLimit entity.
      */
     private RateDecision checkClientMonthlyQuota(String clientId, ClientLimit clientLimit) {
         String yearMonth = redisCounter.getCurrentYearMonth();
@@ -163,13 +203,25 @@ public class RateLimiterService {
         // Monthly reset is at the start of next month
         Instant resetTime = Instant.now().plusSeconds(30 * 24 * 3600); // Approximate
 
-        if (usagePercent >= HARD_REJECT_THRESHOLD) {
-            logger.warn("Client {} monthly quota exceeded: {} / {}", clientId, currentCount, monthlyQuota);
+        // Use client-specific thresholds (with defaults if not set)
+        double hardRejectThreshold = clientLimit.getHardRejectThreshold() != null
+            ? clientLimit.getHardRejectThreshold()
+            : DEFAULT_HARD_REJECT_THRESHOLD;
+        double softThrottleThreshold = clientLimit.getSoftThrottleThreshold() != null
+            ? clientLimit.getSoftThrottleThreshold()
+            : DEFAULT_SOFT_THROTTLE_THRESHOLD;
+
+        if (usagePercent >= hardRejectThreshold) {
+            logger.warn("Client {} monthly quota exceeded: {} / {} (threshold: {}%)",
+                clientId, currentCount, monthlyQuota, hardRejectThreshold * 100);
+            hardRejectCounter.increment();
             return RateDecision.hardReject(monthlyQuota, resetTime, usagePercent * 100);
         }
 
-        if (usagePercent >= SOFT_THROTTLE_THRESHOLD) {
-            logger.info("Client {} monthly quota soft throttle: {} / {}", clientId, currentCount, monthlyQuota);
+        if (usagePercent >= softThrottleThreshold) {
+            logger.info("Client {} monthly quota soft throttle: {} / {} (threshold: {}%)",
+                clientId, currentCount, monthlyQuota, softThrottleThreshold * 100);
+            softThrottleCounter.increment();
             return RateDecision.softThrottle(monthlyQuota, monthlyQuota - currentCount, resetTime, usagePercent * 100);
         }
 

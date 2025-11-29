@@ -33,6 +33,12 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
 server:
   port: 8080
   error:
@@ -49,3 +55,33 @@ logging:
 admin:
   username: admin
   password: admin123
+
+# Spring Boot Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+
+# OpenAPI/Swagger Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+  show-actuator: true

@@ -29,9 +29,6 @@ public class AdminService {
     private final CacheManager cacheManager;
     private final RedisCounterRepository redisCounter;
 
-    private static final double SOFT_THROTTLE_THRESHOLD = 0.80; // 80%
-    private static final double HARD_REJECT_THRESHOLD = 1.00;   // 100%
-
     public AdminService(
             ClientRepository clientRepository,
             ClientLimitRepository clientLimitRepository,
@@ -141,6 +138,9 @@ public class AdminService {
      * Get complete client details including usage statistics, limits, and status.
      */
     public ClientDetailsResponse getClientDetails(Long clientId) {
+        if (clientId == null) {
+            throw new IllegalArgumentException("Client ID cannot be null");
+        }
         Optional<Client> clientOpt = clientRepository.findById(clientId);
         if (clientOpt.isEmpty()) {
             throw new IllegalArgumentException("Client not found: " + clientId);
@@ -178,8 +178,8 @@ public class AdminService {
             : 0.0;
         long windowRemaining = Math.max(0, maxWindowRequests - windowCount);
         Instant windowReset = redisCounter.getWindowResetTime(limit.getWindowSizeSeconds());
-        boolean windowSoftThrottled = windowUsagePercent >= (SOFT_THROTTLE_THRESHOLD * 100) && windowUsagePercent < (HARD_REJECT_THRESHOLD * 100);
-        boolean windowBlocked = windowUsagePercent >= (HARD_REJECT_THRESHOLD * 100);
+        boolean windowSoftThrottled = windowUsagePercent >= (limit.getSoftThrottleThreshold() * 100) && windowUsagePercent < (limit.getHardRejectThreshold() * 100);
+        boolean windowBlocked = windowUsagePercent >= (limit.getHardRejectThreshold() * 100);
 
         ClientDetailsResponse.WindowUsage windowUsage = new ClientDetailsResponse.WindowUsage(
             windowCount,
@@ -199,8 +199,8 @@ public class AdminService {
             ? (double) monthlyCount / monthlyQuota * 100 
             : 0.0;
         long monthlyRemaining = Math.max(0, monthlyQuota - monthlyCount);
-        boolean monthlySoftThrottled = monthlyUsagePercent >= (SOFT_THROTTLE_THRESHOLD * 100) && monthlyUsagePercent < (HARD_REJECT_THRESHOLD * 100);
-        boolean monthlyBlocked = monthlyUsagePercent >= (HARD_REJECT_THRESHOLD * 100);
+        boolean monthlySoftThrottled = monthlyUsagePercent >= (limit.getSoftThrottleThreshold() * 100) && monthlyUsagePercent < (limit.getHardRejectThreshold() * 100);
+        boolean monthlyBlocked = monthlyUsagePercent >= (limit.getHardRejectThreshold() * 100);
 
         ClientDetailsResponse.MonthlyUsage monthlyUsage = new ClientDetailsResponse.MonthlyUsage(
             monthlyCount,

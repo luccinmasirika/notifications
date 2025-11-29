@@ -9,6 +9,7 @@ import com.irembo.notifications.infra.db.repository.SystemLimitRepository;
 import com.irembo.notifications.model.dto.ClientDetailsResponse;
 import com.irembo.notifications.model.dto.ClientLimitRequest;
 import com.irembo.notifications.model.dto.CreateClientRequest;
+import com.irembo.notifications.model.dto.SystemLimitRequest;
 import com.irembo.notifications.model.dto.UpdateClientRequest;
 import com.irembo.notifications.service.AdminService;
 import jakarta.validation.Valid;
@@ -143,6 +144,12 @@ public class AdminController {
         limit.setWindowSizeSeconds(request.windowSizeSeconds());
         limit.setMaxRequestsPerWindow(request.maxRequestsPerWindow());
         limit.setMonthlyQuota(request.monthlyQuota());
+        if (request.softThrottleThreshold() != null) {
+            limit.setSoftThrottleThreshold(request.softThrottleThreshold());
+        }
+        if (request.hardRejectThreshold() != null) {
+            limit.setHardRejectThreshold(request.hardRejectThreshold());
+        }
 
         ClientLimit updated = adminService.createOrUpdateClientLimit(id, limit);
         return ResponseEntity.ok(updated);
@@ -221,11 +228,24 @@ public class AdminController {
      * Create or update a system limit.
      */
     @PostMapping("/system-limits")
-    public ResponseEntity<SystemLimit> createOrUpdateSystemLimit(@RequestBody SystemLimit limit) {
+    public ResponseEntity<SystemLimit> createOrUpdateSystemLimit(@Valid @RequestBody SystemLimitRequest request) {
         // Check if limit with this name already exists
-        Optional<SystemLimit> existing = systemLimitRepository.findByName(limit.getName());
+        Optional<SystemLimit> existing = systemLimitRepository.findByName(request.name());
+        
+        SystemLimit limit;
         if (existing.isPresent()) {
-            limit.setId(existing.get().getId());
+            // Update existing
+            limit = existing.get();
+            limit.setWindowSizeSeconds(request.windowSizeSeconds());
+            limit.setMaxRequestsPerWindow(request.maxRequestsPerWindow());
+            limit.setActive(request.active());
+        } else {
+            // Create new
+            limit = new SystemLimit();
+            limit.setName(request.name());
+            limit.setWindowSizeSeconds(request.windowSizeSeconds());
+            limit.setMaxRequestsPerWindow(request.maxRequestsPerWindow());
+            limit.setActive(request.active());
         }
 
         SystemLimit saved = systemLimitRepository.save(limit);
