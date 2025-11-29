@@ -1,13 +1,13 @@
 <div class="card">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-    <h2 style="margin: 0;">System Limits</h2>
+  <div class="card-header">
+    <h2 class="card-title">System Limits</h2>
     <button mat-raised-button color="primary" (click)="openAddLimitPage()">
       <mat-icon>add</mat-icon>
       Add System Limit
     </button>
   </div>
 
-  <div *ngIf="loading" style="text-align: center; padding: 40px;">
+  <div *ngIf="loading" class="loading-container">
     <mat-spinner diameter="50"></mat-spinner>
   </div>
 
@@ -56,8 +56,8 @@
     <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
   </table>
 
-  <div *ngIf="!loading && systemLimits.length === 0" style="text-align: center; padding: 40px; color: #999;">
-    <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: #ccc;">settings</mat-icon>
+  <div *ngIf="!loading && systemLimits.length === 0" class="empty-state">
+    <mat-icon class="empty-state-icon">settings</mat-icon>
     <p>No system limits found. Click "Add System Limit" to create one.</p>
   </div>
 </div>

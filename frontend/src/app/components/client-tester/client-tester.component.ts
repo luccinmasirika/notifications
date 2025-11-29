@@ -67,11 +67,11 @@ export class ClientTesterComponent implements OnInit, OnDestroy {
           message: 'Test notification message'
         });
       } else {
-        // Pre-fill with example values
-        this.testForm.patchValue({
-          apiKey: 'test-api-key-123',
-          destination: '+250700000001',
-          message: 'Test notification message'
+    // Pre-fill with example values
+    this.testForm.patchValue({
+      apiKey: 'test-api-key-123',
+      destination: '+250700000001',
+      message: 'Test notification message'
         });
       }
     });

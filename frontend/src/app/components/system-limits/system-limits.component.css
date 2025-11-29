@@ -1,8 +1,8 @@
 .card {
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-sm);
 }
 
 table {
@@ -10,12 +10,60 @@ table {
 }
 
 .status-active {
-  background-color: #4caf50;
-  color: white;
+  background-color: var(--color-status-active-bg) !important;
+  color: var(--color-status-active-text) !important;
+}
+
+.status-active .mdc-elevation-overlay {
+  background-color: var(--color-status-active-bg) !important;
+}
+
+.status-active .mat-mdc-chip-action-label {
+  color: var(--color-status-active-text) !important;
 }
 
 .status-inactive {
-  background-color: #f44336;
-  color: white;
+  background-color: var(--color-status-inactive-bg) !important;
+  color: var(--color-status-inactive-text) !important;
+}
+
+.status-inactive .mdc-elevation-overlay {
+  background-color: var(--color-status-inactive-bg) !important;
+}
+
+.status-inactive .mat-mdc-chip-action-label {
+  color: var(--color-status-inactive-text) !important;
+}
+
+/* Header styles */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.card-title {
+  margin: 0;
+}
+
+/* Loading state */
+.loading-container {
+  text-align: center;
+  padding: var(--spacing-3xl);
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-3xl);
+  color: var(--color-text-tertiary);
+}
+
+.empty-state-icon {
+  font-size: var(--icon-size-4xl);
+  width: var(--icon-size-4xl);
+  height: var(--icon-size-4xl);
+  color: var(--color-outline);
 }
 

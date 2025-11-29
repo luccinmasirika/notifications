@@ -1,11 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
-import { Client, ClientLimit } from '../../models/client.model';
-import { ClientDialogComponent } from '../client-dialog/client-dialog.component';
-import { ClientLimitsDialogComponent } from '../client-limits-dialog/client-limits-dialog.component';
-import { ClientDetailsDialogComponent } from '../client-details-dialog/client-details-dialog.component';
+import { Client } from '../../models/client.model';
 
 @Component({
   selector: 'app-client-list',
@@ -19,7 +16,7 @@ export class ClientListComponent implements OnInit {
 
   constructor(
     private adminService: AdminService,
-    private dialog: MatDialog,
+    private router: Router,
     private snackBar: MatSnackBar
   ) {}
 
@@ -43,49 +40,25 @@ export class ClientListComponent implements OnInit {
   }
 
   openAddClientDialog(): void {
-    const dialogRef = this.dialog.open(ClientDialogComponent, {
-      width: '500px',
-      data: { client: null }
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.loadClients();
-      }
-    });
+    this.router.navigate(['/clients/new']);
   }
 
   openEditClientDialog(client: Client): void {
-    const dialogRef = this.dialog.open(ClientDialogComponent, {
-      width: '500px',
-      data: { client: { ...client } }
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.loadClients();
+    if (client.id) {
+      this.router.navigate(['/clients', client.id, 'edit']);
       }
-    });
   }
 
   openLimitsDialog(client: Client): void {
-    const dialogRef = this.dialog.open(ClientLimitsDialogComponent, {
-      width: '500px',
-      data: { clientId: client.id! }
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.snackBar.open('Limits updated successfully', 'Close', { duration: 3000 });
+    if (client.id) {
+      this.router.navigate(['/clients', client.id, 'limits']);
       }
-    });
   }
 
   openDetailsDialog(client: Client): void {
-    this.dialog.open(ClientDetailsDialogComponent, {
-      width: '600px',
-      data: { client: client }
-    });
+    if (client.id) {
+      this.router.navigate(['/clients', client.id]);
+    }
   }
 
   formatDate(dateString?: string): string {

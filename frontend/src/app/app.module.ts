@@ -7,9 +7,6 @@ import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import { ClientListComponent } from './components/client-list/client-list.component';
-import { ClientDialogComponent } from './components/client-dialog/client-dialog.component';
-import { ClientLimitsDialogComponent } from './components/client-limits-dialog/client-limits-dialog.component';
-import { ClientDetailsDialogComponent } from './components/client-details-dialog/client-details-dialog.component';
 import { ClientFormComponent } from './components/client-form/client-form.component';
 import { ClientLimitsComponent } from './components/client-limits/client-limits.component';
 import { ClientDetailsComponent } from './components/client-details/client-details.component';
@@ -18,7 +15,6 @@ import { ClientTesterComponent } from './components/client-tester/client-tester.
 import { DashboardLayoutComponent } from './components/dashboard-layout/dashboard-layout.component';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { SystemLimitsComponent } from './components/system-limits/system-limits.component';
-import { SystemLimitDialogComponent } from './components/system-limit-dialog/system-limit-dialog.component';
 import { SystemLimitFormComponent } from './components/system-limit-form/system-limit-form.component';
 
 // Angular Material imports
@@ -47,9 +43,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   declarations: [
     AppComponent,
     ClientListComponent,
-    ClientDialogComponent,
-    ClientLimitsDialogComponent,
-    ClientDetailsDialogComponent,
     ClientFormComponent,
     ClientLimitsComponent,
     ClientDetailsComponent,
@@ -58,7 +51,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     DashboardLayoutComponent,
     DashboardComponent,
     SystemLimitsComponent,
-    SystemLimitDialogComponent,
     SystemLimitFormComponent
   ],
   imports: [

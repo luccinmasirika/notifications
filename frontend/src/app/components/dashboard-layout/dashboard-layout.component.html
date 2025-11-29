@@ -47,10 +47,10 @@
     <!-- Content Area -->
     <main class="content-area">
       <!-- Breadcrumb Navigation -->
-      <nav class="breadcrumb-nav" *ngIf="breadcrumbs.length > 0">
+      <nav class="breadcrumb-nav" *ngIf="breadcrumbs.length > 1" aria-label="Breadcrumb">
         <ol class="breadcrumb-list">
           <li
-            *ngFor="let item of breadcrumbs; let last = last"
+            *ngFor="let item of breadcrumbs; let last = last; let i = index"
             class="breadcrumb-item"
           >
             <a
@@ -58,13 +58,14 @@
               [routerLink]="item.route"
               class="breadcrumb-link"
               (click)="navigateBreadcrumb(item)"
+              [attr.aria-current]="last ? 'page' : null"
             >
               {{ item.label }}
             </a>
-            <span *ngIf="last || !item.route" class="breadcrumb-current">{{
+            <span *ngIf="last || !item.route" class="breadcrumb-current" [attr.aria-current]="last ? 'page' : null">{{
               item.label
             }}</span>
-            <mat-icon *ngIf="!last" class="breadcrumb-separator"
+            <mat-icon *ngIf="!last" class="breadcrumb-separator" aria-hidden="true"
               >chevron_right</mat-icon
             >
           </li>
