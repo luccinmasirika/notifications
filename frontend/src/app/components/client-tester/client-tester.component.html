@@ -1,0 +1,220 @@
+<div class="container">
+  <mat-card class="test-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>speed</mat-icon>
+        Client Load Test
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="testForm" (ngSubmit)="start()">
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>API Key</mat-label>
+            <input matInput formControlName="apiKey" placeholder="Enter API key" autocomplete="off">
+            <mat-icon matPrefix>vpn_key</mat-icon>
+            <mat-error>{{ getErrorMessage('apiKey') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="half-width">
+            <mat-label>Channel</mat-label>
+            <mat-select formControlName="channel">
+              <mat-option value="SMS">SMS</mat-option>
+              <mat-option value="EMAIL">EMAIL</mat-option>
+            </mat-select>
+            <mat-icon matPrefix>send</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="half-width">
+            <mat-label>Destination</mat-label>
+            <input matInput formControlName="destination" placeholder="Phone or email">
+            <mat-icon matPrefix>person</mat-icon>
+            <mat-error>{{ getErrorMessage('destination') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Message</mat-label>
+            <textarea matInput formControlName="message" rows="3" placeholder="Enter notification message"></textarea>
+            <mat-error>{{ getErrorMessage('message') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="half-width">
+            <mat-label>Total Requests</mat-label>
+            <input matInput type="number" formControlName="totalRequests" placeholder="50">
+            <mat-hint>Min: 1, Max: 500</mat-hint>
+            <mat-error>{{ getErrorMessage('totalRequests') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="half-width">
+            <mat-label>Interval (ms)</mat-label>
+            <input matInput type="number" formControlName="intervalMs" placeholder="200">
+            <mat-error>{{ getErrorMessage('intervalMs') }}</mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="action-buttons">
+          <button 
+            mat-raised-button 
+            color="primary" 
+            type="submit"
+            [disabled]="testForm.invalid || isRunning">
+            <mat-icon>play_arrow</mat-icon>
+            Start Test
+          </button>
+          <button 
+            mat-raised-button 
+            color="warn" 
+            type="button"
+            (click)="stop()"
+            [disabled]="!isRunning">
+            <mat-icon>stop</mat-icon>
+            Stop
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Statistics Card -->
+  <mat-card class="stats-card" *ngIf="totalSent > 0">
+    <mat-card-header>
+      <mat-card-title>Statistics</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-label">Total Sent</div>
+          <div class="stat-value">{{ totalSent }}</div>
+        </div>
+        <div class="stat-item success">
+          <div class="stat-label">Accepted (202)</div>
+          <div class="stat-value">{{ accepted }}</div>
+        </div>
+        <div class="stat-item error">
+          <div class="stat-label">Rejected (429)</div>
+          <div class="stat-value">{{ rejected }}</div>
+        </div>
+        <div class="stat-item warning">
+          <div class="stat-label">Soft Throttles</div>
+          <div class="stat-value">{{ softThrottles }}</div>
+        </div>
+      </div>
+
+      <!-- Current Rate Limit Info -->
+      <div class="current-limit-info" *ngIf="currentLimit !== undefined">
+        <div class="limit-info-item">
+          <span class="limit-label">Current Limit:</span>
+          <span class="limit-value">{{ currentLimit }}</span>
+        </div>
+        <div class="limit-info-item">
+          <span class="limit-label">Remaining:</span>
+          <span class="limit-value" [class.remaining-low]="currentRemaining !== undefined && currentRemaining < currentLimit * 0.2">
+            {{ currentRemaining !== undefined ? currentRemaining : '-' }}
+          </span>
+        </div>
+        <div class="limit-info-item">
+          <span class="limit-label">Usage:</span>
+          <span class="limit-value" [class.usage-high]="currentUsagePercent !== undefined && currentUsagePercent >= 80">
+            {{ currentUsagePercent !== undefined ? currentUsagePercent.toFixed(1) + '%' : '-' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="progress-section" *ngIf="isRunning || totalSent > 0">
+        <div class="progress-label">Progress: {{ totalSent }} / {{ testForm.get('totalRequests')?.value || 0 }}</div>
+        <mat-progress-bar 
+          mode="determinate" 
+          [value]="getProgress()"
+          [color]="getProgress() >= 100 ? 'primary' : 'accent'">
+        </mat-progress-bar>
+      </div>
+
+      <div class="warning-message" *ngIf="consecutive429 >= 5">
+        <mat-icon>warning</mat-icon>
+        <span>Test stopped: 5 consecutive 429 responses detected</span>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Response History Table -->
+  <mat-card class="responses-card" *ngIf="responses.length > 0">
+    <mat-card-header>
+      <mat-card-title>Response History (Last {{ responses.length }})</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <table mat-table [dataSource]="dataSource" class="response-table">
+        <ng-container matColumnDef="requestNumber">
+          <th mat-header-cell *matHeaderCellDef>#</th>
+          <td mat-cell *matCellDef="let response">{{ response.requestNumber }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="httpStatus">
+          <th mat-header-cell *matHeaderCellDef>HTTP Status</th>
+          <td mat-cell *matCellDef="let response">
+            <span [class]="getStatusClass(response.httpStatus)">
+              {{ response.httpStatus }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="limit">
+          <th mat-header-cell *matHeaderCellDef>Limit</th>
+          <td mat-cell *matCellDef="let response">
+            {{ response.limit !== undefined ? response.limit : '-' }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="usagePercent">
+          <th mat-header-cell *matHeaderCellDef>Usage %</th>
+          <td mat-cell *matCellDef="let response">
+            <span [class.usage-high]="response.usagePercent && response.usagePercent >= 80">
+              {{ response.usagePercent !== undefined ? response.usagePercent + '%' : '-' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="softThrottled">
+          <th mat-header-cell *matHeaderCellDef>Soft Throttled</th>
+          <td mat-cell *matCellDef="let response">
+            <mat-chip *ngIf="response.isSoftThrottled" class="status-throttled-chip">
+              Yes
+            </mat-chip>
+            <span *ngIf="!response.isSoftThrottled" style="color: #999;">-</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="remaining">
+          <th mat-header-cell *matHeaderCellDef>Remaining</th>
+          <td mat-cell *matCellDef="let response">
+            {{ response.remaining !== undefined ? response.remaining : '-' }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="retryAfter">
+          <th mat-header-cell *matHeaderCellDef>Retry-After</th>
+          <td mat-cell *matCellDef="let response">
+            {{ response.retryAfter !== undefined ? response.retryAfter + 's' : '-' }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="timestamp">
+          <th mat-header-cell *matHeaderCellDef>Timestamp</th>
+          <td mat-cell *matCellDef="let response">
+            {{ formatTimestamp(response.timestamp) }}
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="['requestNumber', 'httpStatus', 'limit', 'usagePercent', 'remaining', 'softThrottled', 'retryAfter', 'timestamp']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['requestNumber', 'httpStatus', 'limit', 'usagePercent', 'remaining', 'softThrottled', 'retryAfter', 'timestamp'];"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+</div>
+

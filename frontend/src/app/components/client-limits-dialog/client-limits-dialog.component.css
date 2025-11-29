@@ -1,0 +1,14 @@
+mat-dialog-content {
+  padding: 24px;
+  min-width: 400px;
+}
+
+mat-form-field {
+  margin-bottom: 16px;
+}
+
+mat-hint {
+  font-size: 12px;
+  color: #666;
+}
+

@@ -118,6 +118,10 @@ public class RateLimiterFilter extends OncePerRequestFilter {
         response.setHeader("X-RateLimit-Remaining", String.valueOf(decision.remaining()));
         response.setHeader("X-RateLimit-Reset", String.valueOf(decision.reset().getEpochSecond()));
 
+        if (decision.type() == DecisionType.SOFT_THROTTLE) {
+            response.setHeader("X-Soft-Throttled", String.valueOf(true));
+        }
+        
         if (decision.type() == DecisionType.HARD_REJECT && decision.retryAt() != null) {
             long retryAfterSeconds = decision.retryAt().getEpochSecond() - Instant.now().getEpochSecond();
             response.setHeader("Retry-After", String.valueOf(Math.max(0, retryAfterSeconds)));

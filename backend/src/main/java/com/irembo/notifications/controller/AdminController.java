@@ -6,6 +6,7 @@ import com.irembo.notifications.infra.db.entity.SystemLimit;
 import com.irembo.notifications.infra.db.repository.ClientLimitRepository;
 import com.irembo.notifications.infra.db.repository.ClientRepository;
 import com.irembo.notifications.infra.db.repository.SystemLimitRepository;
+import com.irembo.notifications.model.dto.ClientDetailsResponse;
 import com.irembo.notifications.model.dto.ClientLimitRequest;
 import com.irembo.notifications.model.dto.CreateClientRequest;
 import com.irembo.notifications.model.dto.UpdateClientRequest;
@@ -62,6 +63,23 @@ public class AdminController {
                     .body(Map.of("error", "Client not found", "id", id));
         }
         return ResponseEntity.ok(client.get());
+    }
+
+    /**
+     * Get complete client details including usage statistics, limits, and status.
+     */
+    @GetMapping("/clients/{id}/details")
+    public ResponseEntity<?> getClientDetails(@PathVariable Long id) {
+        try {
+            ClientDetailsResponse details = adminService.getClientDetails(id);
+            return ResponseEntity.ok(details);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage(), "id", id));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to get client details", "message", e.getMessage()));
+        }
     }
 
     /**

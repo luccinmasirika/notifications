@@ -1,0 +1,36 @@
+<h2 mat-dialog-title>{{ isEditMode ? 'Edit Client' : 'Add Client' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="clientForm" (ngSubmit)="onSubmit()">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>API Key</mat-label>
+      <input matInput formControlName="apiKey" placeholder="Enter API key (min 16 characters)">
+      <mat-error>{{ getErrorMessage('apiKey') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Name</mat-label>
+      <input matInput formControlName="name" placeholder="Enter client name">
+      <mat-error>{{ getErrorMessage('name') }}</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Priority</mat-label>
+      <input matInput type="number" formControlName="priority" placeholder="Enter priority">
+      <mat-error>{{ getErrorMessage('priority') }}</mat-error>
+    </mat-form-field>
+
+    <mat-checkbox formControlName="active" class="full-width">
+      Active
+    </mat-checkbox>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions class="action-buttons">
+  <button mat-button (click)="onCancel()" [disabled]="loading">Cancel</button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="clientForm.invalid || loading">
+    <mat-spinner *ngIf="loading" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
+    {{ isEditMode ? 'Update' : 'Create' }}
+  </button>
+</mat-dialog-actions>
+
