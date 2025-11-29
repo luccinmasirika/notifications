@@ -23,7 +23,8 @@ import java.util.Arrays;
  * Security Configuration.
  *
  * Two authentication mechanisms:
- * 1. API Key (X-API-KEY header) for /api/** endpoints - handled by APIKeyAuthFilter
+ * 1. API Key (X-API-KEY header) for /api/** endpoints - handled by
+ * APIKeyAuthFilter
  * 2. HTTP Basic Auth for /admin/** endpoints - handled by Spring Security
  *
  * Stateless (no sessions, no CSRF).
@@ -35,25 +36,25 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // Stateless API, no CSRF needed
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers("/health", "/actuator/health", "/error").permitAll()
+                .csrf(csrf -> csrf.disable()) // Stateless API, no CSRF needed
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
+                        .requestMatchers("/health", "/actuator/health", "/error").permitAll()
 
-                // Admin endpoints require HTTP Basic Auth
-                .requestMatchers("/admin/**").authenticated()
+                        // Admin endpoints require HTTP Basic Auth
+                        .requestMatchers("/admin/**").authenticated()
 
-                // API endpoints use API Key auth (handled by APIKeyAuthFilter)
-                // Spring Security permits them here, but APIKeyAuthFilter will validate
-                .requestMatchers("/api/**").permitAll()
+                        // API endpoints use API Key auth (handled by APIKeyAuthFilter)
+                        // Spring Security permits them here, but APIKeyAuthFilter will validate
+                        .requestMatchers("/api/**").permitAll()
 
-                // Deny everything else
-                .anyRequest().denyAll()
-            )
-            // Enable HTTP Basic Auth for admin endpoints
-            .httpBasic(basic -> {});
+                        // Deny everything else
+                        .anyRequest().denyAll())
+                // Enable HTTP Basic Auth for admin endpoints
+                .httpBasic(basic -> {
+                });
 
         return http.build();
     }
@@ -65,6 +66,8 @@ public class SecurityConfig {
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(Arrays.asList("X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset",
+                "X-Soft-Throttled", "Retry-After"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
