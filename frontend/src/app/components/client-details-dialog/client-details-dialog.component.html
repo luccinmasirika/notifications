@@ -13,7 +13,7 @@
     </div>
 
     <div *ngIf="!loading && details" class="details-container">
-      <!-- Client Info Section - Compact -->
+      
       <div class="info-section compact">
         <div class="info-grid-compact">
           <div class="info-item-compact">
@@ -45,9 +45,8 @@
       </div>
     </div>
 
-      <!-- Current Status & Rate Limits Side by Side -->
       <div class="two-column-section">
-    <!-- Current Status -->
+    
         <div class="info-section compact" *ngIf="details.status">
           <h3 class="section-title-small">Status</h3>
           <div class="status-card-compact" 
@@ -64,7 +63,6 @@
       </div>
     </div>
 
-        <!-- Rate Limits -->
         <div class="info-section compact" *ngIf="details.limit">
           <h3 class="section-title-small">Rate limits</h3>
           <div class="limits-grid">
@@ -92,11 +90,10 @@
       </div>
     </div>
 
-      <!-- Usage Statistics - Compact -->
       <div class="info-section compact">
         <h3 class="section-title-small">Usage</h3>
         <div class="usage-cards-compact">
-          <!-- Window Usage -->
+          
           <div class="usage-card-compact" *ngIf="details.windowUsage">
             <div class="usage-header-compact">
               <span class="usage-label-compact">Window</span>
@@ -117,7 +114,6 @@
       </div>
     </div>
 
-          <!-- Monthly Usage -->
           <div class="usage-card-compact" *ngIf="details.monthlyUsage">
             <div class="usage-header-compact">
               <span class="usage-label-compact">Monthly</span>
@@ -140,7 +136,6 @@
       </div>
     </div>
 
-      <!-- No Limits -->
       <div class="info-section compact" *ngIf="!details.limit">
         <div class="empty-info-compact">
         <mat-icon>info</mat-icon>

@@ -155,7 +155,6 @@
   color: #c62828;
 }
 
-/* Two Column Layout */
 .two-column-section {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -227,7 +226,6 @@
   line-height: 1.3;
 }
 
-/* Limits Grid */
 .limits-grid {
   display: flex;
   flex-direction: column;
@@ -264,7 +262,6 @@
   font-weight: 500;
 }
 
-/* Usage Cards Compact */
 .usage-cards-compact {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

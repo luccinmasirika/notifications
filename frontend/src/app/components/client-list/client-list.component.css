@@ -16,7 +16,6 @@ code {
   font-size: var(--font-size-xs);
 }
 
-/* Card header styles */
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -28,13 +27,11 @@ code {
   margin: 0;
 }
 
-/* Loading state */
 .loading-container {
   text-align: center;
   padding: var(--spacing-3xl);
 }
 
-/* Empty state */
 .empty-state-container {
   text-align: center;
   padding: var(--spacing-3xl);
@@ -48,7 +45,6 @@ code {
   color: var(--color-outline);
 }
 
-/* Card styles */
 .card {
   background: var(--color-surface);
   border-radius: var(--radius-sm);
@@ -85,4 +81,3 @@ code {
 .status-inactive .mat-mdc-chip-action-label {
   color: var(--color-status-inactive-text) !important;
 }
-

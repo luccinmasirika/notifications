@@ -4,7 +4,6 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { Client, CreateClientRequest, UpdateClientRequest } from '../../models/client.model';
-
 @Component({
   selector: 'app-client-dialog',
   templateUrl: './client-dialog.component.html',
@@ -14,7 +13,6 @@ export class ClientDialogComponent implements OnInit {
   clientForm: FormGroup;
   isEditMode = false;
   loading = false;
-
   constructor(
     private fb: FormBuilder,
     private adminService: AdminService,
@@ -30,7 +28,6 @@ export class ClientDialogComponent implements OnInit {
       active: [true]
     });
   }
-
   ngOnInit(): void {
     if (this.isEditMode && this.data.client) {
       this.clientForm.patchValue({
@@ -41,12 +38,10 @@ export class ClientDialogComponent implements OnInit {
       });
     }
   }
-
   onSubmit(): void {
     if (this.clientForm.valid) {
       this.loading = true;
       const formValue = this.clientForm.value;
-
       if (this.isEditMode && this.data.client?.id) {
         const updateRequest: UpdateClientRequest = {
           apiKey: formValue.apiKey,
@@ -54,7 +49,6 @@ export class ClientDialogComponent implements OnInit {
           priority: formValue.priority,
           active: formValue.active
         };
-
         this.adminService.updateClient(this.data.client.id, updateRequest).subscribe({
           next: () => {
             this.snackBar.open('Client updated successfully', 'Close', { duration: 3000 });
@@ -74,7 +68,6 @@ export class ClientDialogComponent implements OnInit {
           priority: formValue.priority,
           active: formValue.active
         };
-
         this.adminService.createClient(createRequest).subscribe({
           next: () => {
             this.snackBar.open('Client created successfully', 'Close', { duration: 3000 });
@@ -91,11 +84,9 @@ export class ClientDialogComponent implements OnInit {
       }
     }
   }
-
   onCancel(): void {
     this.dialogRef.close(false);
   }
-
   getErrorMessage(fieldName: string): string {
     const field = this.clientForm.get(fieldName);
     if (field?.hasError('required')) {
@@ -113,4 +104,3 @@ export class ClientDialogComponent implements OnInit {
     return '';
   }
 }
-

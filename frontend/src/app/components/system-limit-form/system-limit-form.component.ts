@@ -4,7 +4,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { SystemLimit, SystemLimitRequest } from '../../models/client.model';
-
 @Component({
   selector: 'app-system-limit-form',
   templateUrl: './system-limit-form.component.html',
@@ -16,7 +15,6 @@ export class SystemLimitFormComponent implements OnInit {
   loading = false;
   loadingLimit = false;
   limitName: string | null = null;
-
   constructor(
     private fb: FormBuilder,
     private adminService: AdminService,
@@ -29,7 +27,6 @@ export class SystemLimitFormComponent implements OnInit {
         Validators.required, 
         Validators.minLength(1), 
         Validators.maxLength(255),
-        // Pattern must match backend: only letters, numbers, and underscores
         Validators.pattern(/^[a-zA-Z0-9_]+$/)
       ]],
       windowSizeSeconds: [60, [Validators.required, Validators.min(1)]],
@@ -37,7 +34,6 @@ export class SystemLimitFormComponent implements OnInit {
       active: [true]
     });
   }
-
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       const name = params['name'];
@@ -48,7 +44,6 @@ export class SystemLimitFormComponent implements OnInit {
       }
     });
   }
-
   loadLimit(): void {
     if (this.limitName) {
       this.loadingLimit = true;
@@ -62,7 +57,6 @@ export class SystemLimitFormComponent implements OnInit {
               maxRequestsPerWindow: limit.maxRequestsPerWindow,
               active: limit.active
             });
-            // Disable name field in edit mode (name cannot be changed)
             this.limitForm.get('name')?.disable();
           } else {
             this.snackBar.open('System limit not found', 'Close', { duration: 3000 });
@@ -78,24 +72,18 @@ export class SystemLimitFormComponent implements OnInit {
       });
     }
   }
-
   onSubmit(): void {
     if (this.limitForm.valid) {
       this.loading = true;
       const formValue = this.limitForm.value;
-
-      // Build request - use getRawValue() to get disabled field value or formValue
       const rawValue = this.limitForm.getRawValue();
       const requestName = rawValue.name || this.limitName || '';
-      
       const request: SystemLimit = {
         name: requestName,
         windowSizeSeconds: formValue.windowSizeSeconds,
         maxRequestsPerWindow: formValue.maxRequestsPerWindow,
         active: formValue.active
       };
-
-      // Get the limit ID if in edit mode (optional, backend finds by name anyway)
       if (this.isEditMode && this.limitName) {
         this.adminService.getSystemLimits().subscribe({
           next: (limits) => {
@@ -114,7 +102,6 @@ export class SystemLimitFormComponent implements OnInit {
       }
     }
   }
-
   private saveLimit(request: SystemLimit): void {
     this.adminService.createOrUpdateSystemLimit(request).subscribe({
       next: () => {
@@ -136,11 +123,9 @@ export class SystemLimitFormComponent implements OnInit {
       }
     });
   }
-
   onCancel(): void {
     this.router.navigate(['/settings']);
   }
-
   getErrorMessage(fieldName: string): string {
     const field = this.limitForm.get(fieldName);
     if (field?.hasError('required')) {
@@ -160,7 +145,6 @@ export class SystemLimitFormComponent implements OnInit {
     }
     return '';
   }
-
   formatWindowHint(seconds: number): string {
     if (seconds < 60) {
       return `${seconds} seconds`;
@@ -173,4 +157,3 @@ export class SystemLimitFormComponent implements OnInit {
     }
   }
 }
-

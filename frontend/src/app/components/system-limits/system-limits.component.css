@@ -35,7 +35,6 @@ table {
   color: var(--color-status-inactive-text) !important;
 }
 
-/* Header styles */
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -47,13 +46,11 @@ table {
   margin: 0;
 }
 
-/* Loading state */
 .loading-container {
   text-align: center;
   padding: var(--spacing-3xl);
 }
 
-/* Empty state */
 .empty-state {
   text-align: center;
   padding: var(--spacing-3xl);
@@ -66,4 +63,3 @@ table {
   height: var(--icon-size-4xl);
   color: var(--color-outline);
 }
-

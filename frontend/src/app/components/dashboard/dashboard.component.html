@@ -1,4 +1,3 @@
-<!-- Stats Overview -->
 <div class="stats-section">
   <div class="stat-card" *ngFor="let stat of stats">
     <div class="stat-content">
@@ -9,9 +8,8 @@
   </div>
 </div>
 
-<!-- Main Content -->
 <div class="dashboard-content">
-  <!-- Header with Actions -->
+  
   <div class="section-header">
     <div>
       <h2>Clients</h2>
@@ -23,15 +21,13 @@
     </button>
   </div>
 
-  <!-- Loading State -->
   <div *ngIf="loading" class="loading-state">
     <mat-spinner diameter="40"></mat-spinner>
     <p>Loading clients...</p>
   </div>
 
-  <!-- Clients List -->
   <div *ngIf="!loading" class="clients-container">
-    <!-- Empty State -->
+    
     <div *ngIf="clients.length === 0" class="empty-state">
       <div class="empty-icon">
         <mat-icon>inbox</mat-icon>
@@ -44,7 +40,6 @@
       </button>
     </div>
 
-    <!-- Clients Grid -->
     <div *ngIf="clients.length > 0" class="clients-grid">
       <div *ngFor="let client of clients" class="client-card" [class.inactive]="!client.active">
         <div class="client-header">

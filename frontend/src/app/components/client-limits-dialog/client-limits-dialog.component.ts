@@ -4,7 +4,6 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { ClientLimitRequest, ClientLimit } from '../../models/client.model';
-
 @Component({
   selector: 'app-client-limits-dialog',
   templateUrl: './client-limits-dialog.component.html',
@@ -15,7 +14,6 @@ export class ClientLimitsDialogComponent implements OnInit {
   loading = false;
   loadingLimits = false;
   clientId: number;
-
   constructor(
     private fb: FormBuilder,
     private adminService: AdminService,
@@ -32,11 +30,9 @@ export class ClientLimitsDialogComponent implements OnInit {
       hardRejectThresholdPercent: [100, [Validators.min(0), Validators.max(100)]]
     });
   }
-
   ngOnInit(): void {
     this.loadExistingLimits();
   }
-
   loadExistingLimits(): void {
     this.loadingLimits = true;
     this.adminService.getClientLimit(this.clientId).subscribe({
@@ -51,7 +47,6 @@ export class ClientLimitsDialogComponent implements OnInit {
         this.loadingLimits = false;
       },
       error: (error) => {
-        // If limit doesn't exist, use defaults (already set in form)
         if (error.status === 404) {
           console.log('No existing limits found, using defaults');
         } else {
@@ -62,7 +57,6 @@ export class ClientLimitsDialogComponent implements OnInit {
       }
     });
   }
-
   onSubmit(): void {
     if (this.limitsForm.valid) {
       this.loading = true;
@@ -74,7 +68,6 @@ export class ClientLimitsDialogComponent implements OnInit {
         softThrottleThreshold: (formValue.softThrottleThresholdPercent ?? 80) / 100,
         hardRejectThreshold: (formValue.hardRejectThresholdPercent ?? 100) / 100
       };
-
       this.adminService.updateClientLimits(this.clientId, request).subscribe({
         next: () => {
           this.snackBar.open('Limits updated successfully', 'Close', { duration: 3000 });
@@ -90,11 +83,9 @@ export class ClientLimitsDialogComponent implements OnInit {
       });
     }
   }
-
   onCancel(): void {
     this.dialogRef.close(false);
   }
-
   getErrorMessage(fieldName: string): string {
     const field = this.limitsForm.get(fieldName);
     if (field?.hasError('required')) {

@@ -4,7 +4,6 @@ import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { SystemLimit, SystemLimitRequest } from '../../models/client.model';
-
 @Component({
   selector: 'app-system-limit-dialog',
   templateUrl: './system-limit-dialog.component.html',
@@ -14,7 +13,6 @@ export class SystemLimitDialogComponent implements OnInit {
   limitForm: FormGroup;
   isEditMode = false;
   loading = false;
-
   constructor(
     private fb: FormBuilder,
     private adminService: AdminService,
@@ -28,7 +26,6 @@ export class SystemLimitDialogComponent implements OnInit {
         Validators.required, 
         Validators.minLength(1), 
         Validators.maxLength(255),
-        // Pattern must match backend: only letters, numbers, and underscores
         Validators.pattern(/^[a-zA-Z0-9_]+$/)
       ]],
       windowSizeSeconds: [60, [Validators.required, Validators.min(1)]],
@@ -36,7 +33,6 @@ export class SystemLimitDialogComponent implements OnInit {
       active: [true]
     });
   }
-
   ngOnInit(): void {
     if (this.isEditMode && this.data.limit) {
       this.limitForm.patchValue({
@@ -47,25 +43,19 @@ export class SystemLimitDialogComponent implements OnInit {
       });
     }
   }
-
   onSubmit(): void {
     if (this.limitForm.valid) {
       this.loading = true;
       const formValue = this.limitForm.value;
-
-      // Build request - backend finds by name, but include ID if editing for clarity
       const request: SystemLimit = {
         name: formValue.name,
         windowSizeSeconds: formValue.windowSizeSeconds,
         maxRequestsPerWindow: formValue.maxRequestsPerWindow,
         active: formValue.active
       };
-
-      // Include ID if in edit mode (backend will find by name, but ID ensures correct update)
       if (this.isEditMode && this.data.limit?.id) {
         request.id = this.data.limit.id;
       }
-
       this.adminService.createOrUpdateSystemLimit(request).subscribe({
         next: () => {
           const message = this.isEditMode ? 'System limit updated successfully' : 'System limit created successfully';
@@ -82,11 +72,9 @@ export class SystemLimitDialogComponent implements OnInit {
       });
     }
   }
-
   onCancel(): void {
     this.dialogRef.close(false);
   }
-
   getErrorMessage(fieldName: string): string {
     const field = this.limitForm.get(fieldName);
     if (field?.hasError('required')) {
@@ -106,7 +94,6 @@ export class SystemLimitDialogComponent implements OnInit {
     }
     return '';
   }
-
   formatWindowHint(seconds: number): string {
     if (seconds < 60) {
       return `${seconds} seconds`;
@@ -119,4 +106,3 @@ export class SystemLimitDialogComponent implements OnInit {
     }
   }
 }
-

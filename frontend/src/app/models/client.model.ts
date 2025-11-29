@@ -6,7 +6,6 @@ export interface Client {
   active: boolean;
   createdAt?: string;
 }
-
 export interface ClientLimit {
   id?: number;
   clientId: number;
@@ -17,21 +16,18 @@ export interface ClientLimit {
   hardRejectThreshold?: number;
   createdAt?: string;
 }
-
 export interface CreateClientRequest {
   apiKey: string;
   name: string;
   priority?: number;
   active?: boolean;
 }
-
 export interface UpdateClientRequest {
   apiKey?: string;
   name?: string;
   priority?: number;
   active?: boolean;
 }
-
 export interface ClientLimitRequest {
   windowSizeSeconds: number;
   maxRequestsPerWindow: number;
@@ -39,7 +35,6 @@ export interface ClientLimitRequest {
   softThrottleThreshold?: number;
   hardRejectThreshold?: number;
 }
-
 export interface WindowUsage {
   currentCount: number;
   maxRequests: number;
@@ -50,7 +45,6 @@ export interface WindowUsage {
   isSoftThrottled: boolean;
   isBlocked: boolean;
 }
-
 export interface MonthlyUsage {
   currentCount: number;
   monthlyQuota: number;
@@ -59,7 +53,6 @@ export interface MonthlyUsage {
   isSoftThrottled: boolean;
   isBlocked: boolean;
 }
-
 export interface ClientStatus {
   isActive: boolean;
   isBlocked: boolean;
@@ -67,7 +60,6 @@ export interface ClientStatus {
   statusMessage: string;
   nextReset: string | null;
 }
-
 export interface ClientDetailsResponse {
   client: Client;
   limit: ClientLimit | null;
@@ -75,7 +67,6 @@ export interface ClientDetailsResponse {
   monthlyUsage: MonthlyUsage | null;
   status: ClientStatus;
 }
-
 export interface SystemLimit {
   id?: number;
   name: string;
@@ -84,11 +75,9 @@ export interface SystemLimit {
   active: boolean;
   createdAt?: string;
 }
-
 export interface SystemLimitRequest {
   name: string;
   windowSizeSeconds: number;
   maxRequestsPerWindow: number;
   active?: boolean;
 }
-

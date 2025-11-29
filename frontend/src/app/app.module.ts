@@ -3,7 +3,6 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule } from '@angular/common/http';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
-
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import { ClientListComponent } from './components/client-list/client-list.component';
@@ -16,8 +15,6 @@ import { DashboardLayoutComponent } from './components/dashboard-layout/dashboar
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { SystemLimitsComponent } from './components/system-limits/system-limits.component';
 import { SystemLimitFormComponent } from './components/system-limit-form/system-limit-form.component';
-
-// Angular Material imports
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -38,7 +35,6 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
-
 @NgModule({
   declarations: [
     AppComponent,
@@ -85,4 +81,3 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   bootstrap: [AppComponent]
 })
 export class AppModule { }
-

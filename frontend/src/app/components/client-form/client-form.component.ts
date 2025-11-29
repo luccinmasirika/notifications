@@ -4,7 +4,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { Client, CreateClientRequest, UpdateClientRequest } from '../../models/client.model';
-
 @Component({
   selector: 'app-client-form',
   templateUrl: './client-form.component.html',
@@ -16,7 +15,6 @@ export class ClientFormComponent implements OnInit {
   loading = false;
   loadingClient = false;
   clientId: number | null = null;
-
   constructor(
     private fb: FormBuilder,
     private adminService: AdminService,
@@ -31,7 +29,6 @@ export class ClientFormComponent implements OnInit {
       active: [true]
     });
   }
-
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       const id = params['id'];
@@ -42,7 +39,6 @@ export class ClientFormComponent implements OnInit {
       }
     });
   }
-
   loadClient(): void {
     if (this.clientId) {
       this.loadingClient = true;
@@ -67,12 +63,10 @@ export class ClientFormComponent implements OnInit {
       });
     }
   }
-
   onSubmit(): void {
     if (this.clientForm.valid) {
       this.loading = true;
       const formValue = this.clientForm.value;
-
       if (this.isEditMode && this.clientId) {
         const updateRequest: UpdateClientRequest = {
           apiKey: formValue.apiKey,
@@ -80,7 +74,6 @@ export class ClientFormComponent implements OnInit {
           priority: formValue.priority,
           active: formValue.active
         };
-
         this.adminService.updateClient(this.clientId, updateRequest).subscribe({
           next: () => {
             this.snackBar.open('Client updated successfully', 'Close', { duration: 3000 });
@@ -100,7 +93,6 @@ export class ClientFormComponent implements OnInit {
           priority: formValue.priority,
           active: formValue.active
         };
-
         this.adminService.createClient(createRequest).subscribe({
           next: () => {
             this.snackBar.open('Client created successfully', 'Close', { duration: 3000 });
@@ -117,41 +109,32 @@ export class ClientFormComponent implements OnInit {
       }
     }
   }
-
   onCancel(): void {
     this.router.navigate(['/admin']);
   }
-
   generateApiKey(): void {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let apiKey = 'LM'; 
-    
     const segments = [
       { length: 3 }, 
       { length: 6 }, 
       { length: 6 },
       { length: 6 },
     ];
-    
     for (let segIndex = 0; segIndex < segments.length; segIndex++) {
       const seg = segments[segIndex];
-      
       if (segIndex > 0) {
         apiKey += '-';
       }
-      
       const segmentArray = new Uint8Array(seg.length);
       crypto.getRandomValues(segmentArray);
-      
       for (let i = 0; i < seg.length; i++) {
         apiKey += chars[segmentArray[i] % chars.length];
       }
     }
-    
     this.clientForm.patchValue({ apiKey });
     this.snackBar.open('API key generated successfully', 'Close', { duration: 2000 });
   }
-
   getErrorMessage(fieldName: string): string {
     const field = this.clientForm.get(fieldName);
     if (field?.hasError('required')) {
@@ -169,4 +152,3 @@ export class ClientFormComponent implements OnInit {
     return '';
   }
 }
-

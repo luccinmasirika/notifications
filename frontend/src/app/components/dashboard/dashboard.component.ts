@@ -3,7 +3,6 @@ import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { Client } from '../../models/client.model';
-
 interface SystemStatus {
   status: string;
   statistics: {
@@ -13,13 +12,11 @@ interface SystemStatus {
     systemLimits: number;
   };
 }
-
 interface StatCard {
   label: string;
   value: string | number;
   subtitle?: string;
 }
-
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
@@ -31,22 +28,18 @@ export class DashboardComponent implements OnInit {
   systemStatus: SystemStatus | null = null;
   loadingStatus = false;
   stats: StatCard[] = [];
-
   constructor(
     private adminService: AdminService,
     private router: Router,
     private snackBar: MatSnackBar
   ) {}
-
   ngOnInit(): void {
     this.loadDashboardData();
   }
-
   loadDashboardData(): void {
     this.loadClients();
     this.loadSystemStatus();
   }
-
   loadClients(): void {
     this.loading = true;
     this.adminService.getClients().subscribe({
@@ -61,7 +54,6 @@ export class DashboardComponent implements OnInit {
       }
     });
   }
-
   loadSystemStatus(): void {
     this.loadingStatus = true;
     this.adminService.getSystemStatus().subscribe({
@@ -77,7 +69,6 @@ export class DashboardComponent implements OnInit {
       }
     });
   }
-
   updateStats(): void {
     const stats = this.getStatistics();
     this.stats = [
@@ -103,38 +94,31 @@ export class DashboardComponent implements OnInit {
       }
     ];
   }
-
   openAddClientDialog(): void {
     this.router.navigate(['/clients/new']);
   }
-
   openEditClientDialog(client: Client): void {
     if (client.id) {
       this.router.navigate(['/clients', client.id, 'edit']);
     }
   }
-
   openLimitsDialog(client: Client): void {
     if (client.id) {
       this.router.navigate(['/clients', client.id, 'limits']);
     }
   }
-
   openDetailsDialog(client: Client): void {
     if (client.id) {
       this.router.navigate(['/clients', client.id]);
     }
   }
-
   openTestPage(client: Client): void {
     if (client.apiKey) {
-      // Navigate to test page with API key as query parameter
       this.router.navigate(['/client-test'], {
         queryParams: { apiKey: client.apiKey }
       });
     }
   }
-
   copyApiKey(apiKey: string): void {
     navigator.clipboard.writeText(apiKey).then(() => {
       this.snackBar.open('API key copied to clipboard', 'Close', { duration: 2000 });
@@ -142,7 +126,6 @@ export class DashboardComponent implements OnInit {
       this.snackBar.open('Failed to copy API key', 'Close', { duration: 2000 });
     });
   }
-
   formatDate(dateString?: string): string {
     if (!dateString) return '-';
     const date = new Date(dateString);
@@ -152,7 +135,6 @@ export class DashboardComponent implements OnInit {
       day: 'numeric' 
     });
   }
-
   getStatistics() {
     return this.systemStatus?.statistics || {
       totalClients: 0,

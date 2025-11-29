@@ -3,7 +3,6 @@ export interface NotificationRequest {
   to: string;
   message: string;
 }
-
 export interface NotificationResponse {
   status: string;
   message: string;
@@ -12,7 +11,6 @@ export interface NotificationResponse {
   timestamp: string;
   clientName?: string;
 }
-
 export interface RateLimitHeaders {
   limit?: number;
   remaining?: number;
@@ -20,7 +18,6 @@ export interface RateLimitHeaders {
   retryAfter?: number;
   softThrottled?: boolean;
 }
-
 export interface TestResponse {
   requestNumber: number;
   httpStatus: number;
@@ -30,4 +27,3 @@ export interface TestResponse {
   timestamp: Date;
   rateLimitHeaders?: RateLimitHeaders;
 }
-

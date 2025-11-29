@@ -11,7 +11,6 @@ import { ClientDetailsComponent } from './components/client-details/client-detai
 import { SystemLimitsComponent } from './components/system-limits/system-limits.component';
 import { SystemLimitFormComponent } from './components/system-limit-form/system-limit-form.component';
 import { AuthGuard } from './guards/auth.guard';
-
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
   {
@@ -33,10 +32,8 @@ const routes: Routes = [
   },
   { path: '**', redirectTo: '/admin' }
 ];
-
 @NgModule({
   imports: [RouterModule.forRoot(routes)],
   exports: [RouterModule]
 })
 export class AppRoutingModule { }
-

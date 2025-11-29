@@ -4,7 +4,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { ClientLimitRequest, ClientLimit } from '../../models/client.model';
-
 @Component({
   selector: 'app-client-limits',
   templateUrl: './client-limits.component.html',
@@ -15,7 +14,6 @@ export class ClientLimitsComponent implements OnInit {
   loading = false;
   loadingLimits = false;
   clientId: number | null = null;
-
   constructor(
     private fb: FormBuilder,
     private adminService: AdminService,
@@ -31,7 +29,6 @@ export class ClientLimitsComponent implements OnInit {
       hardRejectThresholdPercent: [100, [Validators.min(0), Validators.max(100)]]
     });
   }
-
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       const id = params['id'];
@@ -41,7 +38,6 @@ export class ClientLimitsComponent implements OnInit {
       }
     });
   }
-
   loadExistingLimits(): void {
     if (this.clientId) {
       this.loadingLimits = true;
@@ -57,7 +53,6 @@ export class ClientLimitsComponent implements OnInit {
           this.loadingLimits = false;
         },
         error: (error) => {
-          // If limit doesn't exist, use defaults (already set in form)
           if (error.status === 404) {
             console.log('No existing limits found, using defaults');
           } else {
@@ -69,7 +64,6 @@ export class ClientLimitsComponent implements OnInit {
       });
     }
   }
-
   onSubmit(): void {
     if (this.limitsForm.valid && this.clientId) {
       this.loading = true;
@@ -81,7 +75,6 @@ export class ClientLimitsComponent implements OnInit {
         softThrottleThreshold: (formValue.softThrottleThresholdPercent ?? 80) / 100,
         hardRejectThreshold: (formValue.hardRejectThresholdPercent ?? 100) / 100
       };
-
       this.adminService.updateClientLimits(this.clientId, request).subscribe({
         next: () => {
           this.snackBar.open('Limits updated successfully', 'Close', { duration: 3000 });
@@ -97,11 +90,9 @@ export class ClientLimitsComponent implements OnInit {
       });
     }
   }
-
   onCancel(): void {
     this.router.navigate(['/admin']);
   }
-
   getErrorMessage(fieldName: string): string {
     const field = this.limitsForm.get(fieldName);
     if (field?.hasError('required')) {
@@ -116,4 +107,3 @@ export class ClientLimitsComponent implements OnInit {
     return '';
   }
 }
-
