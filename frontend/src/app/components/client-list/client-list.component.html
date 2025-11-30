@@ -1,9 +1,9 @@
 <div class="card">
   <div class="card-header">
-    <h2 class="card-title">Admin</h2>
+    <h2 class="card-title">{{ 'clientList.title' | translate }}</h2>
     <button mat-raised-button color="primary" (click)="openAddClientDialog()">
       <mat-icon>add</mat-icon>
-      Add Client
+      {{ 'clientList.addClient' | translate }}
     </button>
   </div>
 
@@ -13,51 +13,51 @@
 
   <table mat-table [dataSource]="clients" *ngIf="!loading" class="mat-elevation-z0">
     <ng-container matColumnDef="id">
-      <th mat-header-cell *matHeaderCellDef>ID</th>
+      <th mat-header-cell *matHeaderCellDef>{{ 'common.id' | translate }}</th>
       <td mat-cell *matCellDef="let client">{{ client.id }}</td>
     </ng-container>
 
     <ng-container matColumnDef="name">
-      <th mat-header-cell *matHeaderCellDef>Name</th>
+      <th mat-header-cell *matHeaderCellDef>{{ 'client.name' | translate }}</th>
       <td mat-cell *matCellDef="let client">{{ client.name }}</td>
     </ng-container>
 
     <ng-container matColumnDef="apiKey">
-      <th mat-header-cell *matHeaderCellDef>API Key</th>
+      <th mat-header-cell *matHeaderCellDef>{{ 'client.apiKey' | translate }}</th>
       <td mat-cell *matCellDef="let client">
         <code class="api-key-code">{{ client.apiKey }}</code>
       </td>
     </ng-container>
 
     <ng-container matColumnDef="priority">
-      <th mat-header-cell *matHeaderCellDef>Priority</th>
+      <th mat-header-cell *matHeaderCellDef>{{ 'client.priority' | translate }}</th>
       <td mat-cell *matCellDef="let client">{{ client.priority }}</td>
     </ng-container>
 
     <ng-container matColumnDef="active">
-      <th mat-header-cell *matHeaderCellDef>Status</th>
+      <th mat-header-cell *matHeaderCellDef>{{ 'client.status' | translate }}</th>
       <td mat-cell *matCellDef="let client">
         <mat-chip [class.status-active]="client.active" [class.status-inactive]="!client.active">
-          {{ client.active ? 'Active' : 'Inactive' }}
+          {{ client.active ? ('common.active' | translate) : ('common.inactive' | translate) }}
         </mat-chip>
       </td>
     </ng-container>
 
     <ng-container matColumnDef="createdAt">
-      <th mat-header-cell *matHeaderCellDef>Created</th>
+      <th mat-header-cell *matHeaderCellDef>{{ 'common.created' | translate }}</th>
       <td mat-cell *matCellDef="let client">{{ formatDate(client.createdAt) }}</td>
     </ng-container>
 
     <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef>Actions</th>
+      <th mat-header-cell *matHeaderCellDef>{{ 'common.actions' | translate }}</th>
       <td mat-cell *matCellDef="let client">
-        <button mat-icon-button color="primary" (click)="openDetailsDialog(client)" title="View Details">
+        <button mat-icon-button color="primary" (click)="openDetailsDialog(client)" [title]="'clientList.viewDetails' | translate">
           <mat-icon>visibility</mat-icon>
         </button>
-        <button mat-icon-button color="primary" (click)="openEditClientDialog(client)" title="Edit Client">
+        <button mat-icon-button color="primary" (click)="openEditClientDialog(client)" [title]="'clientList.editClient' | translate">
           <mat-icon>edit</mat-icon>
         </button>
-        <button mat-icon-button color="accent" (click)="openLimitsDialog(client)" title="Edit Limits">
+        <button mat-icon-button color="accent" (click)="openLimitsDialog(client)" [title]="'clientList.editLimits' | translate">
           <mat-icon>settings</mat-icon>
         </button>
       </td>
@@ -69,6 +69,6 @@
 
   <div *ngIf="!loading && clients.length === 0" class="empty-state-container">
     <mat-icon class="empty-state-icon">inbox</mat-icon>
-    <p>No clients found. Click "Add Client" to create one.</p>
+    <p>{{ 'clientList.noClientsFound' | translate }}</p>
   </div>
 </div>

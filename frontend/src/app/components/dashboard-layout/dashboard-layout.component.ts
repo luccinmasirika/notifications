@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, NavigationEnd, ActivatedRoute } from '@angular/router';
+import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../services/auth.service';
 import { AdminService } from '../../services/admin.service';
 import { filter } from 'rxjs/operators';
@@ -18,15 +19,16 @@ export class DashboardLayoutComponent implements OnInit {
   breadcrumbs: BreadcrumbItem[] = [];
   clientName: string | null = null;
   menuItems = [
-    { path: 'admin', icon: 'dashboard', label: 'Overview' },
-    { path: 'client-test', icon: 'speed', label: 'Testing' },
-    { path: 'settings', icon: 'settings', label: 'Settings' }
+    { path: 'admin', icon: 'dashboard', labelKey: 'navigation.overview' },
+    { path: 'client-test', icon: 'speed', labelKey: 'navigation.testing' },
+    { path: 'settings', icon: 'settings', labelKey: 'navigation.settings' }
   ];
   constructor(
     private router: Router,
     private route: ActivatedRoute,
     private authService: AuthService,
-    private adminService: AdminService
+    private adminService: AdminService,
+    public translate: TranslateService
   ) {}
   ngOnInit(): void {
     this.router.events
@@ -41,7 +43,7 @@ export class DashboardLayoutComponent implements OnInit {
   updateBreadcrumbs(): void {
     const tempBreadcrumbs: BreadcrumbItem[] = [];
     this.clientName = null;
-    tempBreadcrumbs.push({ label: 'Overview', route: '/admin' });
+    tempBreadcrumbs.push({ label: this.translate.instant('navigation.overview'), route: '/admin' });
     const urlParts = this.currentRoute.split('/').filter(part => part);
     if (urlParts.length === 0) {
       this.breadcrumbs = tempBreadcrumbs;
@@ -52,18 +54,18 @@ export class DashboardLayoutComponent implements OnInit {
       return;
     }
     if (urlParts[0] === 'client-test') {
-      tempBreadcrumbs.push({ label: 'Testing' });
+      tempBreadcrumbs.push({ label: this.translate.instant('navigation.testing') });
       this.breadcrumbs = tempBreadcrumbs;
       return;
     }
     if (urlParts[0] === 'settings') {
-      tempBreadcrumbs.push({ label: 'Settings', route: '/settings' });
+      tempBreadcrumbs.push({ label: this.translate.instant('navigation.settings'), route: '/settings' });
       if (urlParts.length === 1) {
         this.breadcrumbs = tempBreadcrumbs;
         return;
       }
       if (urlParts[1] === 'new') {
-        tempBreadcrumbs.push({ label: 'New System Limit' });
+        tempBreadcrumbs.push({ label: this.translate.instant('breadcrumbs.newSystemLimit') });
         this.breadcrumbs = tempBreadcrumbs;
         return;
       }
@@ -83,7 +85,7 @@ export class DashboardLayoutComponent implements OnInit {
     }
     if (urlParts[0] === 'clients') {
       if (urlParts[1] === 'new') {
-        tempBreadcrumbs.push({ label: 'New Client' });
+        tempBreadcrumbs.push({ label: this.translate.instant('client.newClient') });
         this.breadcrumbs = tempBreadcrumbs;
         return;
       }
@@ -91,21 +93,21 @@ export class DashboardLayoutComponent implements OnInit {
       if (clientId && !isNaN(+clientId)) {
         if (urlParts.length === 2) {
           tempBreadcrumbs.push({ 
-            label: 'Client Details',
+            label: this.translate.instant('client.details'),
             route: `/clients/${clientId}`
           });
         } else if (urlParts[2] === 'edit') {
           tempBreadcrumbs.push({ 
-            label: 'Client',
+            label: this.clientName || this.translate.instant('client.name'),
             route: `/clients/${clientId}`
           });
-          tempBreadcrumbs.push({ label: 'Edit' });
+          tempBreadcrumbs.push({ label: this.translate.instant('breadcrumbs.edit') });
         } else if (urlParts[2] === 'limits') {
           tempBreadcrumbs.push({ 
-            label: 'Client',
+            label: this.clientName || this.translate.instant('client.name'),
             route: `/clients/${clientId}`
           });
-          tempBreadcrumbs.push({ label: 'Rate Limits' });
+          tempBreadcrumbs.push({ label: this.translate.instant('clientLimits.rateLimits') });
         }
         this.breadcrumbs = tempBreadcrumbs;
         this.loadClientName(+clientId);
@@ -123,7 +125,7 @@ export class DashboardLayoutComponent implements OnInit {
         const urlParts = this.currentRoute.split('/').filter(part => part);
         if (urlParts[0] === 'clients' && urlParts[1] === clientId.toString()) {
           const newBreadcrumbs: BreadcrumbItem[] = [
-            { label: 'Overview', route: '/admin' }
+            { label: this.translate.instant('navigation.overview'), route: '/admin' }
           ];
           if (urlParts.length === 2) {
             newBreadcrumbs.push({ 
@@ -135,13 +137,13 @@ export class DashboardLayoutComponent implements OnInit {
               label: this.clientName,
               route: `/clients/${clientId}`
             });
-            newBreadcrumbs.push({ label: 'Edit' });
+            newBreadcrumbs.push({ label: this.translate.instant('breadcrumbs.edit') });
           } else if (urlParts[2] === 'limits') {
             newBreadcrumbs.push({ 
               label: this.clientName,
               route: `/clients/${clientId}`
             });
-            newBreadcrumbs.push({ label: 'Rate Limits' });
+            newBreadcrumbs.push({ label: this.translate.instant('clientLimits.rateLimits') });
           }
           this.breadcrumbs = newBreadcrumbs;
         }

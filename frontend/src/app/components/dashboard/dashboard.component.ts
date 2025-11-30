@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { TranslateService } from '@ngx-translate/core';
 import { AdminService } from '../../services/admin.service';
 import { Client } from '../../models/client.model';
 interface SystemStatus {
@@ -31,7 +32,8 @@ export class DashboardComponent implements OnInit {
   constructor(
     private adminService: AdminService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private translate: TranslateService
   ) {}
   ngOnInit(): void {
     this.loadDashboardData();
@@ -49,7 +51,9 @@ export class DashboardComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading clients:', error);
-        this.snackBar.open('Error loading clients', 'Close', { duration: 3000 });
+        this.translate.get('dashboard.errorLoadingClients').subscribe((msg) => {
+          this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 3000 });
+        });
         this.loading = false;
       }
     });
@@ -71,28 +75,35 @@ export class DashboardComponent implements OnInit {
   }
   updateStats(): void {
     const stats = this.getStatistics();
-    this.stats = [
-      {
-        label: 'Total Clients',
-        value: stats.totalClients,
-        subtitle: 'All clients'
-      },
-      {
-        label: 'Active',
-        value: stats.activeClients,
-        subtitle: `${stats.totalClients > 0 ? Math.round((stats.activeClients / stats.totalClients) * 100) : 0}% of total`
-      },
-      {
-        label: 'With Limits',
-        value: stats.clientLimits,
-        subtitle: 'Configured'
-      },
-      {
-        label: 'System Limits',
-        value: stats.systemLimits,
-        subtitle: 'Active rules'
-      }
-    ];
+    this.translate.get([
+      'dashboard.totalClients',
+      'dashboard.activeClients',
+      'dashboard.totalRequests',
+      'systemLimits.title'
+    ]).subscribe(translations => {
+      this.stats = [
+        {
+          label: translations['dashboard.totalClients'],
+          value: stats.totalClients,
+          subtitle: this.translate.instant('dashboard.totalClients')
+        },
+        {
+          label: translations['dashboard.activeClients'],
+          value: stats.activeClients,
+          subtitle: `${stats.totalClients > 0 ? Math.round((stats.activeClients / stats.totalClients) * 100) : 0}% ${this.translate.instant('dashboard.ofTotal')}`
+        },
+        {
+          label: this.translate.instant('dashboard.withLimits'),
+          value: stats.clientLimits,
+          subtitle: this.translate.instant('dashboard.configured')
+        },
+        {
+          label: translations['systemLimits.title'],
+          value: stats.systemLimits,
+          subtitle: this.translate.instant('dashboard.activeRules')
+        }
+      ];
+    });
   }
   openAddClientDialog(): void {
     this.router.navigate(['/clients/new']);
@@ -121,9 +132,13 @@ export class DashboardComponent implements OnInit {
   }
   copyApiKey(apiKey: string): void {
     navigator.clipboard.writeText(apiKey).then(() => {
-      this.snackBar.open('API key copied to clipboard', 'Close', { duration: 2000 });
+      this.translate.get('client.apiKeyCopied').subscribe((msg) => {
+        this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 2000 });
+      });
     }).catch(() => {
-      this.snackBar.open('Failed to copy API key', 'Close', { duration: 2000 });
+      this.translate.get('client.apiKeyCopyFailed').subscribe((msg) => {
+        this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 2000 });
+      });
     });
   }
   formatDate(dateString?: string): string {

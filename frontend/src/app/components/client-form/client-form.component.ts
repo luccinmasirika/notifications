@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { Client, CreateClientRequest, UpdateClientRequest } from '../../models/client.model';
+import { TranslateService } from '@ngx-translate/core';
 @Component({
   selector: 'app-client-form',
   templateUrl: './client-form.component.html',
@@ -20,7 +21,8 @@ export class ClientFormComponent implements OnInit {
     private adminService: AdminService,
     private router: Router,
     private route: ActivatedRoute,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private translate: TranslateService
   ) {
     this.clientForm = this.fb.group({
       apiKey: ['', [Validators.required, Validators.minLength(16), Validators.maxLength(255)]],
@@ -57,7 +59,7 @@ export class ClientFormComponent implements OnInit {
         },
         error: (error) => {
           console.error('Error loading client:', error);
-          this.snackBar.open('Error loading client', 'Close', { duration: 3000 });
+          this.snackBar.open(this.translate.instant('client.errorLoadingClient'), this.translate.instant('common.close'), { duration: 3000 });
           this.loadingClient = false;
         }
       });
@@ -76,13 +78,13 @@ export class ClientFormComponent implements OnInit {
         };
         this.adminService.updateClient(this.clientId, updateRequest).subscribe({
           next: () => {
-            this.snackBar.open('Client updated successfully', 'Close', { duration: 3000 });
+            this.snackBar.open(this.translate.instant('client.clientUpdated'), this.translate.instant('common.close'), { duration: 3000 });
             this.router.navigate(['/admin']);
             this.loading = false;
           },
           error: (error) => {
             console.error('Error updating client:', error);
-            this.snackBar.open('Error updating client', 'Close', { duration: 3000 });
+            this.snackBar.open(this.translate.instant('client.errorSavingClient'), this.translate.instant('common.close'), { duration: 3000 });
             this.loading = false;
           }
         });
@@ -95,14 +97,14 @@ export class ClientFormComponent implements OnInit {
         };
         this.adminService.createClient(createRequest).subscribe({
           next: () => {
-            this.snackBar.open('Client created successfully', 'Close', { duration: 3000 });
+            this.snackBar.open(this.translate.instant('client.clientCreated'), this.translate.instant('common.close'), { duration: 3000 });
             this.router.navigate(['/admin']);
             this.loading = false;
           },
           error: (error) => {
             console.error('Error creating client:', error);
-            const errorMessage = error.error?.message || 'Error creating client';
-            this.snackBar.open(errorMessage, 'Close', { duration: 3000 });
+            const errorMessage = error.error?.message || this.translate.instant('client.errorSavingClient');
+            this.snackBar.open(errorMessage, this.translate.instant('common.close'), { duration: 3000 });
             this.loading = false;
           }
         });
@@ -133,21 +135,30 @@ export class ClientFormComponent implements OnInit {
       }
     }
     this.clientForm.patchValue({ apiKey });
-    this.snackBar.open('API key generated successfully', 'Close', { duration: 2000 });
+    this.snackBar.open(this.translate.instant('client.apiKeyGenerated'), this.translate.instant('common.close'), { duration: 2000 });
   }
   getErrorMessage(fieldName: string): string {
     const field = this.clientForm.get(fieldName);
     if (field?.hasError('required')) {
-      return `${fieldName} is required`;
+      return this.translate.instant('errors.required');
     }
     if (field?.hasError('minlength')) {
-      return `${fieldName} is too short`;
+      if (fieldName === 'name') {
+        return this.translate.instant('client.nameMinLength');
+      }
+      if (fieldName === 'apiKey') {
+        return this.translate.instant('client.apiKeyMinLength');
+      }
+      return `${fieldName} ${this.translate.instant('client.nameTooShort')}`;
     }
     if (field?.hasError('maxlength')) {
-      return `${fieldName} is too long`;
+      return `${fieldName} ${this.translate.instant('client.nameTooLong')}`;
     }
     if (field?.hasError('min')) {
-      return `${fieldName} must be at least ${field.errors?.['min'].min}`;
+      if (fieldName === 'priority') {
+        return this.translate.instant('client.priorityMin');
+      }
+      return `${fieldName} ${this.translate.instant('common.min', { min: field.errors?.['min'].min })}`;
     }
     return '';
   }

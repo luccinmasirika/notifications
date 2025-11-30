@@ -3,43 +3,43 @@
     <mat-card-header>
       <mat-card-title>
         <mat-icon>tune</mat-icon>
-        Rate limits
+        {{ 'clientLimits.title' | translate }}
       </mat-card-title>
     </mat-card-header>
 
     <mat-card-content>
       <div *ngIf="loadingLimits" class="loading-state">
         <mat-spinner diameter="40"></mat-spinner>
-        <p>Loading limits...</p>
+        <p>{{ 'clientLimits.loadingLimits' | translate }}</p>
       </div>
 
       <form [formGroup]="limitsForm" class="form-container" *ngIf="!loadingLimits">
         <div class="form-section">
-          <h3 class="section-title">Window limits</h3>
-          <p class="section-description">Control how many requests are allowed in a time window</p>
+          <h3 class="section-title">{{ 'clientLimits.windowLimits' | translate }}</h3>
+          <p class="section-description">{{ 'clientLimits.windowLimitsDescription' | translate }}</p>
           
           <div class="form-row">
             <mat-form-field appearance="outline" class="half-width">
-              <mat-label>Window size (seconds)</mat-label>
+              <mat-label>{{ 'clientLimits.windowSize' | translate }}</mat-label>
               <input matInput type="number" formControlName="windowSizeSeconds" placeholder="60">
-              <mat-hint>Time period for the rate limit window</mat-hint>
+              <mat-hint>{{ 'clientLimits.windowSizeHint' | translate }}</mat-hint>
               <mat-error *ngIf="limitsForm.get('windowSizeSeconds')?.hasError('required')">
-                Window size is required
+                {{ getErrorMessage('windowSizeSeconds') }}
               </mat-error>
               <mat-error *ngIf="limitsForm.get('windowSizeSeconds')?.hasError('min')">
-                Must be at least 1 second
+                {{ getErrorMessage('windowSizeSeconds') }}
               </mat-error>
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="half-width">
-              <mat-label>Max requests per window</mat-label>
+              <mat-label>{{ 'clientLimits.maxRequests' | translate }}</mat-label>
               <input matInput type="number" formControlName="maxRequestsPerWindow" placeholder="100">
-              <mat-hint>Maximum number of requests allowed in the window</mat-hint>
+              <mat-hint>{{ 'clientLimits.maxRequestsHint' | translate }}</mat-hint>
               <mat-error *ngIf="limitsForm.get('maxRequestsPerWindow')?.hasError('required')">
-                Max requests is required
+                {{ getErrorMessage('maxRequestsPerWindow') }}
               </mat-error>
               <mat-error *ngIf="limitsForm.get('maxRequestsPerWindow')?.hasError('min')">
-                Must be at least 1 request
+                {{ getErrorMessage('maxRequestsPerWindow') }}
               </mat-error>
             </mat-form-field>
           </div>
@@ -48,19 +48,19 @@
         <mat-divider></mat-divider>
 
         <div class="form-section">
-          <h3 class="section-title">Monthly quota</h3>
-          <p class="section-description">Total requests allowed per month</p>
+          <h3 class="section-title">{{ 'clientLimits.monthlyQuota' | translate }}</h3>
+          <p class="section-description">{{ 'clientLimits.monthlyQuotaDescription' | translate }}</p>
           
           <div class="form-row">
             <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Monthly quota</mat-label>
+              <mat-label>{{ 'clientLimits.monthlyQuota' | translate }}</mat-label>
               <input matInput type="number" formControlName="monthlyQuota" placeholder="10000">
-              <mat-hint>Total requests allowed in a calendar month</mat-hint>
+              <mat-hint>{{ 'clientLimits.monthlyQuotaHint' | translate }}</mat-hint>
               <mat-error *ngIf="limitsForm.get('monthlyQuota')?.hasError('required')">
-                Monthly quota is required
+                {{ getErrorMessage('monthlyQuota') }}
               </mat-error>
               <mat-error *ngIf="limitsForm.get('monthlyQuota')?.hasError('min')">
-                Must be at least 1 request
+                {{ getErrorMessage('monthlyQuota') }}
               </mat-error>
             </mat-form-field>
           </div>
@@ -69,12 +69,12 @@
         <mat-divider></mat-divider>
 
         <div class="form-section">
-          <h3 class="section-title">Throttle thresholds</h3>
-          <p class="section-description">Configure when throttling and rejection should occur (as percentage of limit)</p>
+          <h3 class="section-title">{{ 'clientLimits.throttleThresholds' | translate }}</h3>
+          <p class="section-description">{{ 'clientLimits.throttleThresholdsDescription' | translate }}</p>
           
           <div class="form-row">
             <mat-form-field appearance="outline" class="half-width">
-              <mat-label>Soft throttle threshold</mat-label>
+              <mat-label>{{ 'clientLimits.softThrottleThreshold' | translate }}</mat-label>
               <input matInput type="number" 
                      formControlName="softThrottleThresholdPercent" 
                      placeholder="80"
@@ -82,17 +82,17 @@
                      min="0"
                      max="100">
               <span matSuffix>%</span>
-              <mat-hint>Start throttling at this percentage</mat-hint>
+              <mat-hint>{{ 'clientLimits.softThrottleHint' | translate }}</mat-hint>
               <mat-error *ngIf="limitsForm.get('softThrottleThresholdPercent')?.hasError('min')">
-                Must be between 0% and 100%
+                {{ getErrorMessage('softThrottleThresholdPercent') }}
               </mat-error>
               <mat-error *ngIf="limitsForm.get('softThrottleThresholdPercent')?.hasError('max')">
-                Must not exceed 100%
+                {{ getErrorMessage('softThrottleThresholdPercent') }}
               </mat-error>
             </mat-form-field>
 
             <mat-form-field appearance="outline" class="half-width">
-              <mat-label>Hard reject threshold</mat-label>
+              <mat-label>{{ 'clientLimits.hardRejectThreshold' | translate }}</mat-label>
               <input matInput type="number" 
                      formControlName="hardRejectThresholdPercent" 
                      placeholder="100"
@@ -100,12 +100,12 @@
                      min="0"
                      max="100">
               <span matSuffix>%</span>
-              <mat-hint>Start rejecting requests at this percentage</mat-hint>
+              <mat-hint>{{ 'clientLimits.hardRejectHint' | translate }}</mat-hint>
               <mat-error *ngIf="limitsForm.get('hardRejectThresholdPercent')?.hasError('min')">
-                Must be between 0% and 100%
+                {{ getErrorMessage('hardRejectThresholdPercent') }}
               </mat-error>
               <mat-error *ngIf="limitsForm.get('hardRejectThresholdPercent')?.hasError('max')">
-                Must not exceed 100%
+                {{ getErrorMessage('hardRejectThresholdPercent') }}
               </mat-error>
             </mat-form-field>
           </div>
@@ -113,11 +113,11 @@
           <div class="threshold-info">
             <mat-icon>info</mat-icon>
             <div class="info-text">
-              <strong>How it works:</strong>
+              <strong>{{ 'clientLimits.howItWorks' | translate }}</strong>
               <ul>
-                <li>Below soft throttle: Requests are allowed normally</li>
-                <li>At soft throttle: Requests are delayed with jitter</li>
-                <li>At hard reject: Requests are rejected with 429 status</li>
+                <li>{{ 'clientLimits.belowSoftThrottle' | translate }}</li>
+                <li>{{ 'clientLimits.atSoftThrottle' | translate }}</li>
+                <li>{{ 'clientLimits.atHardReject' | translate }}</li>
               </ul>
             </div>
           </div>
@@ -125,17 +125,17 @@
 
         <div class="action-buttons">
           <button mat-button (click)="onCancel()" [disabled]="loading">
-            Cancel
+            {{ 'common.cancel' | translate }}
           </button>
           <button 
             mat-raised-button 
             color="primary" 
             (click)="onSubmit()" 
             [disabled]="limitsForm.invalid || loading">
-            <span *ngIf="!loading">Save limits</span>
+            <span *ngIf="!loading">{{ 'common.save' | translate }}</span>
             <span *ngIf="loading" class="loading-content">
               <mat-spinner diameter="18"></mat-spinner>
-              <span>Saving...</span>
+              <span>{{ 'common.saving' | translate }}</span>
             </span>
           </button>
         </div>

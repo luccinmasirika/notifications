@@ -20,7 +20,7 @@
     </div>
 
     <div class="top-bar-right">
-      <button mat-icon-button (click)="logout()" matTooltip="Sign out">
+      <button mat-icon-button (click)="logout()" [matTooltip]="'app.signOut' | translate">
         <mat-icon>logout</mat-icon>
       </button>
     </div>
@@ -38,7 +38,7 @@
           routerLinkActive="active"
         >
           <mat-icon>{{ item.icon }}</mat-icon>
-          <span class="nav-label">{{ item.label }}</span>
+          <span class="nav-label">{{ item.labelKey | translate }}</span>
         </a>
       </div>
     </nav>

@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { ClientLimitRequest, ClientLimit } from '../../models/client.model';
+import { TranslateService } from '@ngx-translate/core';
 @Component({
   selector: 'app-client-limits',
   templateUrl: './client-limits.component.html',
@@ -19,7 +20,8 @@ export class ClientLimitsComponent implements OnInit {
     private adminService: AdminService,
     private router: Router,
     private route: ActivatedRoute,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private translate: TranslateService
   ) {
     this.limitsForm = this.fb.group({
       windowSizeSeconds: [60, [Validators.required, Validators.min(1)]],
@@ -57,7 +59,7 @@ export class ClientLimitsComponent implements OnInit {
             console.log('No existing limits found, using defaults');
           } else {
             console.error('Error loading limits:', error);
-            this.snackBar.open('Error loading limits', 'Close', { duration: 3000 });
+            this.snackBar.open(this.translate.instant('clientLimits.errorLoadingLimits'), this.translate.instant('common.close'), { duration: 3000 });
           }
           this.loadingLimits = false;
         }
@@ -77,14 +79,14 @@ export class ClientLimitsComponent implements OnInit {
       };
       this.adminService.updateClientLimits(this.clientId, request).subscribe({
         next: () => {
-          this.snackBar.open('Limits updated successfully', 'Close', { duration: 3000 });
+          this.snackBar.open(this.translate.instant('clientLimits.limitsUpdated'), this.translate.instant('common.close'), { duration: 3000 });
           this.router.navigate(['/admin']);
           this.loading = false;
         },
         error: (error) => {
           console.error('Error updating limits:', error);
-          const errorMessage = error.error?.message || 'Error updating limits';
-          this.snackBar.open(errorMessage, 'Close', { duration: 3000 });
+          const errorMessage = error.error?.message || this.translate.instant('clientLimits.errorUpdatingLimits');
+          this.snackBar.open(errorMessage, this.translate.instant('common.close'), { duration: 3000 });
           this.loading = false;
         }
       });
@@ -96,13 +98,37 @@ export class ClientLimitsComponent implements OnInit {
   getErrorMessage(fieldName: string): string {
     const field = this.limitsForm.get(fieldName);
     if (field?.hasError('required')) {
-      return `${fieldName} is required`;
+      if (fieldName === 'windowSizeSeconds') {
+        return this.translate.instant('clientLimits.windowSizeRequired');
+      }
+      if (fieldName === 'maxRequestsPerWindow') {
+        return this.translate.instant('clientLimits.maxRequestsRequired');
+      }
+      if (fieldName === 'monthlyQuota') {
+        return this.translate.instant('clientLimits.monthlyQuotaRequired');
+      }
+      return this.translate.instant('errors.required');
     }
     if (field?.hasError('min')) {
-      return `${fieldName} must be at least ${field.errors?.['min'].min}`;
+      if (fieldName === 'windowSizeSeconds') {
+        return this.translate.instant('clientLimits.windowSizeMin');
+      }
+      if (fieldName === 'maxRequestsPerWindow') {
+        return this.translate.instant('clientLimits.maxRequestsMin');
+      }
+      if (fieldName === 'monthlyQuota') {
+        return this.translate.instant('clientLimits.monthlyQuotaMin');
+      }
+      if (fieldName === 'softThrottleThresholdPercent' || fieldName === 'hardRejectThresholdPercent') {
+        return this.translate.instant('clientLimits.thresholdMin');
+      }
+      return `${fieldName} ${this.translate.instant('common.min', { min: field.errors?.['min'].min })}`;
     }
     if (field?.hasError('max')) {
-      return `${fieldName} must not exceed ${field.errors?.['max'].max}`;
+      if (fieldName === 'softThrottleThresholdPercent' || fieldName === 'hardRejectThresholdPercent') {
+        return this.translate.instant('clientLimits.thresholdMax');
+      }
+      return `${fieldName} ${this.translate.instant('common.max', { max: field.errors?.['max'].max })}`;
     }
     return '';
   }

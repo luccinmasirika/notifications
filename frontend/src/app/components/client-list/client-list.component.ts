@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { Client } from '../../models/client.model';
+import { TranslateService } from '@ngx-translate/core';
 @Component({
   selector: 'app-client-list',
   templateUrl: './client-list.component.html',
@@ -15,7 +16,8 @@ export class ClientListComponent implements OnInit {
   constructor(
     private adminService: AdminService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private translate: TranslateService
   ) {}
   ngOnInit(): void {
     this.loadClients();
@@ -29,7 +31,7 @@ export class ClientListComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading clients:', error);
-        this.snackBar.open('Error loading clients', 'Close', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('clientList.errorLoadingClients'), this.translate.instant('common.close'), { duration: 3000 });
         this.loading = false;
       }
     });

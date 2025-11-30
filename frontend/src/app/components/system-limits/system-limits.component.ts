@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AdminService } from '../../services/admin.service';
 import { SystemLimit } from '../../models/client.model';
+import { TranslateService } from '@ngx-translate/core';
 @Component({
   selector: 'app-system-limits',
   templateUrl: './system-limits.component.html',
@@ -15,7 +16,8 @@ export class SystemLimitsComponent implements OnInit {
   constructor(
     private adminService: AdminService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private translate: TranslateService
   ) {}
   ngOnInit(): void {
     this.loadSystemLimits();
@@ -29,7 +31,7 @@ export class SystemLimitsComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading system limits:', error);
-        this.snackBar.open('Error loading system limits', 'Close', { duration: 3000 });
+        this.snackBar.open(this.translate.instant('systemLimits.errorLoadingLimits'), this.translate.instant('common.close'), { duration: 3000 });
         this.loading = false;
       }
     });

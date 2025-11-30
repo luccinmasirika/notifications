@@ -16,31 +16,31 @@
           />
         </svg>
       </div>
-      <p class="subtitle">Sign in to manage your notification services</p>
+      <p class="subtitle">{{ 'login.subtitle' | translate }}</p>
     </div>
 
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Email or username</mat-label>
+        <mat-label>{{ 'login.emailOrUsername' | translate }}</mat-label>
         <input
           matInput
           formControlName="username"
-          placeholder="Enter your email"
+          [placeholder]="'login.emailPlaceholder' | translate"
           autocomplete="username"
           type="text"
         />
         <mat-error *ngIf="loginForm.get('username')?.hasError('required')">
-          Please enter your username
+          {{ 'login.usernameRequired' | translate }}
         </mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Password</mat-label>
+        <mat-label>{{ 'login.password' | translate }}</mat-label>
         <input
           matInput
           [type]="hidePassword ? 'password' : 'text'"
           formControlName="password"
-          placeholder="Enter your password"
+          [placeholder]="'login.passwordPlaceholder' | translate"
           autocomplete="current-password"
         />
         <button
@@ -48,14 +48,14 @@
           matSuffix
           type="button"
           (click)="hidePassword = !hidePassword"
-          [attr.aria-label]="'Toggle password visibility'"
+          [attr.aria-label]="'login.togglePasswordVisibility' | translate"
         >
           <mat-icon>{{
             hidePassword ? "visibility_off" : "visibility"
           }}</mat-icon>
         </button>
         <mat-error *ngIf="loginForm.get('password')?.hasError('required')">
-          Please enter your password
+          {{ 'login.passwordRequired' | translate }}
         </mat-error>
       </mat-form-field>
 
@@ -66,16 +66,16 @@
         class="login-button full-width"
         [disabled]="loginForm.invalid || loading"
       >
-        <span *ngIf="!loading">Sign in</span>
+        <span *ngIf="!loading">{{ 'login.signIn' | translate }}</span>
         <span *ngIf="loading" class="loading-content">
           <mat-spinner diameter="20"></mat-spinner>
-          <span>Signing in...</span>
+          <span>{{ 'login.signingIn' | translate }}</span>
         </span>
       </button>
     </form>
 
     <div class="login-footer">
-      <p>Need help? <a href="https://irembo.com/about/" target="_blank" rel="noopener noreferrer" class="link">Contact support</a></p>
+      <p>{{ 'login.needHelp' | translate }} <a href="https://irembo.com/about/" target="_blank" rel="noopener noreferrer" class="link">{{ 'login.contactSupport' | translate }}</a></p>
     </div>
   </div>
 </div>
