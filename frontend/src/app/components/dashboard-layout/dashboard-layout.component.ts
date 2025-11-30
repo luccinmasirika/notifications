@@ -1,21 +1,39 @@
 import { Component, OnInit } from '@angular/core';
-import { Router, NavigationEnd, ActivatedRoute } from '@angular/router';
-import { TranslateService } from '@ngx-translate/core';
+import { CommonModule } from '@angular/common';
+import { Router, RouterOutlet, RouterLink, RouterLinkActive, NavigationEnd, ActivatedRoute } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../../services/auth.service';
 import { AdminService } from '../../services/admin.service';
 import { filter } from 'rxjs/operators';
+
 interface BreadcrumbItem {
   label: string;
   route?: string;
 }
+
 @Component({
   selector: 'app-dashboard-layout',
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule,
+    TranslateModule
+  ],
   templateUrl: './dashboard-layout.component.html',
   styleUrls: ['./dashboard-layout.component.css']
 })
 export class DashboardLayoutComponent implements OnInit {
   currentRoute = '';
   sidebarOpen = true;
+  mobileMenuOpen = false;
   breadcrumbs: BreadcrumbItem[] = [];
   clientName: string | null = null;
   menuItems = [
@@ -36,6 +54,10 @@ export class DashboardLayoutComponent implements OnInit {
       .subscribe((event: any) => {
         this.currentRoute = event.url;
         this.updateBreadcrumbs();
+        // Close mobile menu on route change
+        if (this.mobileMenuOpen) {
+          this.closeMobileMenu();
+        }
       });
     this.currentRoute = this.router.url;
     this.updateBreadcrumbs();
@@ -167,5 +189,17 @@ export class DashboardLayoutComponent implements OnInit {
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+  toggleMobileMenu(): void {
+    this.mobileMenuOpen = !this.mobileMenuOpen;
+  }
+  closeMobileMenu(): void {
+    this.mobileMenuOpen = false;
+  }
+  onNavItemClick(): void {
+    // Close mobile menu when a navigation item is clicked
+    if (this.mobileMenuOpen) {
+      this.closeMobileMenu();
+    }
   }
 }

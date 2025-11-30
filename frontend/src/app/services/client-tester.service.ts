@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpResponse, HttpErrorResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { NotificationRequest, NotificationResponse, RateLimitHeaders } from '../models/notification.model';
+import { ConfigService } from './config.service';
+
 export interface TestResponseData {
   requestNumber: number;
   httpStatus: number;
@@ -13,12 +15,22 @@ export interface TestResponseData {
   timestamp: Date;
   rateLimitHeaders?: RateLimitHeaders;
 }
+
 @Injectable({
   providedIn: 'root'
 })
 export class ClientTesterService {
-  private apiUrl = 'http:
-  constructor(private http: HttpClient) {}
+  private apiUrl = '';
+
+  constructor(
+    private http: HttpClient,
+    private configService: ConfigService
+  ) {
+    this.configService.getConfig().subscribe(config => {
+      this.apiUrl = config.notificationApiUrl;
+    });
+  }
+
   sendNotification(
     apiKey: string,
     request: NotificationRequest
@@ -36,6 +48,7 @@ export class ClientTesterService {
       }
     );
   }
+
   extractRateLimitHeaders(response: HttpResponse<any> | HttpErrorResponse): RateLimitHeaders {
     const headers = response.headers;
     const rateLimitHeaders: RateLimitHeaders = {};
@@ -51,11 +64,13 @@ export class ClientTesterService {
       }
       return null;
     };
+
     const limit = getHeader('X-RateLimit-Limit');
     const remaining = getHeader('X-RateLimit-Remaining');
     const reset = getHeader('X-RateLimit-Reset');
     const retryAfter = getHeader('Retry-After');
     const softThrottled = getHeader('X-Soft-Throttled');
+
     if (limit) {
       rateLimitHeaders.limit = parseInt(limit, 10);
     }
@@ -71,6 +86,7 @@ export class ClientTesterService {
     if (softThrottled !== null && softThrottled !== undefined && softThrottled !== '') {
       rateLimitHeaders.softThrottled = softThrottled.toLowerCase() === 'true';
     }
+
     if (response instanceof HttpErrorResponse && response.status === 429 && response.error) {
       const errorBody = response.error;
       if (typeof errorBody === 'object') {
@@ -80,8 +96,10 @@ export class ClientTesterService {
         if (errorBody.retryAfter !== undefined) rateLimitHeaders.retryAfter = errorBody.retryAfter;
       }
     }
+
     return rateLimitHeaders;
   }
+
   calculateUsagePercent(headers: RateLimitHeaders, errorBody?: any): number | undefined {
     if (errorBody && errorBody.message) {
       const usageMatch = errorBody.message.match(/Usage:\s*([\d.]+)%/);

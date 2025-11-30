@@ -1,9 +1,16 @@
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { TranslateService } from '@ngx-translate/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AdminService } from '../../services/admin.service';
 import { Client } from '../../models/client.model';
+
 interface SystemStatus {
   status: string;
   statistics: {
@@ -13,13 +20,25 @@ interface SystemStatus {
     systemLimits: number;
   };
 }
+
 interface StatCard {
   label: string;
   value: string | number;
   subtitle?: string;
 }
+
 @Component({
   selector: 'app-dashboard',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatMenuModule,
+    MatTooltipModule,
+    TranslateModule
+  ],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })

@@ -1,0 +1,5 @@
+{
+  "apiUrl": "http://localhost:8080/admin",
+  "notificationApiUrl": "http://localhost:8080/api/notifications"
+}
+

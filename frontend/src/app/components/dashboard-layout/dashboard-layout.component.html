@@ -2,6 +2,15 @@
   
   <header class="top-bar">
     <div class="top-bar-left">
+      <button 
+        mat-icon-button 
+        class="menu-toggle"
+        (click)="toggleMobileMenu()"
+        [attr.aria-label]="'navigation.menu' | translate"
+        aria-expanded="{{mobileMenuOpen}}"
+      >
+        <mat-icon>{{ mobileMenuOpen ? 'close' : 'menu' }}</mat-icon>
+      </button>
       <div class="app-logo">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -26,9 +35,17 @@
     </div>
   </header>
 
+  <!-- Mobile menu overlay -->
+  <div 
+    class="mobile-overlay" 
+    *ngIf="mobileMenuOpen"
+    (click)="closeMobileMenu()"
+    [class.active]="mobileMenuOpen"
+  ></div>
+
   <div class="main-layout">
     
-    <nav class="side-nav" [class.collapsed]="!sidebarOpen">
+    <nav class="side-nav" [class.mobile-open]="mobileMenuOpen" [class.collapsed]="!sidebarOpen">
       <div class="nav-items">
         <a
           *ngFor="let item of menuItems"
@@ -36,6 +53,7 @@
           [class.active]="isActiveRoute(item.path)"
           [routerLink]="['./' + item.path]"
           routerLinkActive="active"
+          (click)="onNavItemClick()"
         >
           <mat-icon>{{ item.icon }}</mat-icon>
           <span class="nav-label">{{ item.labelKey | translate }}</span>
