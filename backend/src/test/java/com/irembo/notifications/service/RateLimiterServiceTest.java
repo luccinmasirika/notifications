@@ -40,6 +40,9 @@ class RateLimiterServiceTest {
     @Mock
     private SystemLimitRepository systemLimitRepository;
 
+    @Mock
+    private AdminService adminService;
+
     private SimpleMeterRegistry meterRegistry;
 
     private RateLimiterService rateLimiterService;
@@ -47,6 +50,7 @@ class RateLimiterServiceTest {
     private Client testClient;
     private ClientLimit testClientLimit;
     private SystemLimit testSystemLimit;
+    private String testApiKey;
 
     @BeforeEach
     void setUp() {
@@ -58,13 +62,16 @@ class RateLimiterServiceTest {
                 clientRepository,
                 clientLimitRepository,
                 systemLimitRepository,
+                adminService,
                 meterRegistry
         );
 
-        // Setup test client
+        // Setup test client (V8: use hash instead of plain text API key)
         testClient = new Client();
         testClient.setId(1L);
-        testClient.setApiKey("test-api-key-123");
+        ApiKeyHashService hashService = new ApiKeyHashService();
+        testApiKey = "test-api-key-123";
+        testClient.setApiKeyHash(hashService.hashApiKey(testApiKey));
         testClient.setName("Test Client");
         testClient.setActive(true);
 
@@ -85,7 +92,8 @@ class RateLimiterServiceTest {
         testSystemLimit.setActive(true);
 
         // Default mocks (lenient to avoid unnecessary stubbing warnings)
-        lenient().when(clientRepository.findByApiKey("test-api-key-123"))
+        // V8: RateLimiterService now uses AdminService.validateApiKey() to validate plain text API keys
+        lenient().when(adminService.validateApiKey(testApiKey))
                 .thenReturn(Optional.of(testClient));
         lenient().when(clientLimitRepository.findByClientId(1L))
                 .thenReturn(Optional.of(testClientLimit));
@@ -106,7 +114,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.ALLOW);
@@ -123,7 +132,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -142,7 +152,8 @@ class RateLimiterServiceTest {
         lenient().when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -161,7 +172,8 @@ class RateLimiterServiceTest {
         lenient().when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -178,7 +190,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -194,7 +207,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -205,9 +219,11 @@ class RateLimiterServiceTest {
     @DisplayName("Should return HARD_REJECT for invalid API key")
     void shouldRejectInvalidApiKey() {
         // Given: Invalid API key
-        when(clientRepository.findByApiKey("invalid-key")).thenReturn(Optional.empty());
+        // V8: Mock validateApiKey for invalid key (returns empty)
+        when(adminService.validateApiKey("invalid-key")).thenReturn(Optional.empty());
 
         // When
+        // V8: Pass plain text invalid key
         RateDecision decision = rateLimiterService.checkAndConsume("invalid-key", "SMS");
 
         // Then
@@ -219,10 +235,12 @@ class RateLimiterServiceTest {
     void shouldRejectInactiveClient() {
         // Given: Client is inactive
         testClient.setActive(false);
-        when(clientRepository.findByApiKey("test-api-key-123")).thenReturn(Optional.of(testClient));
+        // V8: Mock validateApiKey with the plain text API key
+        when(adminService.validateApiKey(testApiKey)).thenReturn(Optional.of(testClient));
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -237,7 +255,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(10000L); // At global limit
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -253,7 +272,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -269,7 +289,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -285,7 +306,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -302,7 +324,8 @@ class RateLimiterServiceTest {
         lenient().when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -319,7 +342,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -333,7 +357,8 @@ class RateLimiterServiceTest {
         when(clientLimitRepository.findByClientId(1L)).thenReturn(Optional.empty());
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -348,7 +373,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(0L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.ALLOW);
@@ -365,7 +391,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.ALLOW);
@@ -381,7 +408,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getWindowResetTime(10)).thenReturn(expectedReset);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -397,7 +425,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -413,7 +442,8 @@ class RateLimiterServiceTest {
         when(redisCounter.getGlobalWindow(10)).thenReturn(8500L); // 85% of 10000
 
         // When
-        RateDecision decision = rateLimiterService.checkAndConsume("test-api-key-123", "SMS");
+        // V8: RateLimiterService now expects plain text API key (validated via AdminService)
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
 
         // Then: global limit soft-throttle is logged, but final decision remains ALLOW
         // because client-specific usage is still below soft-throttle threshold.

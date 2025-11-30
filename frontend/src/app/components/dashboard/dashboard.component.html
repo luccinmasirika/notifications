@@ -66,15 +66,11 @@
               <mat-icon>tune</mat-icon>
               <span>{{ 'client.limits' | translate }}</span>
             </button>
-            <button mat-menu-item (click)="openTestPage(client)">
-              <mat-icon>speed</mat-icon>
-              <span>{{ 'client.tester' | translate }}</span>
-            </button>
           </mat-menu>
         </div>
 
         <div class="client-body">
-          <div class="client-field">
+          <div class="client-field" *ngIf="client.apiKey">
             <label>{{ 'client.apiKey' | translate }}</label>
             <div class="api-key-value">
               <code>{{ client.apiKey }}</code>

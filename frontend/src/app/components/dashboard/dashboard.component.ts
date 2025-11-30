@@ -142,14 +142,10 @@ export class DashboardComponent implements OnInit {
       this.router.navigate(['/clients', client.id]);
     }
   }
-  openTestPage(client: Client): void {
-    if (client.apiKey) {
-      this.router.navigate(['/client-test'], {
-        queryParams: { apiKey: client.apiKey }
-      });
+  copyApiKey(apiKey: string | undefined): void {
+    if (!apiKey) {
+      return;
     }
-  }
-  copyApiKey(apiKey: string): void {
     navigator.clipboard.writeText(apiKey).then(() => {
       this.translate.get('client.apiKeyCopied').subscribe((msg) => {
         this.snackBar.open(msg, this.translate.instant('common.close'), { duration: 2000 });

@@ -11,7 +11,7 @@ import { TranslateService } from '@ngx-translate/core';
 })
 export class ClientListComponent implements OnInit {
   clients: Client[] = [];
-  displayedColumns: string[] = ['id', 'name', 'apiKey', 'priority', 'active', 'createdAt', 'actions'];
+  displayedColumns: string[] = ['id', 'name', 'priority', 'active', 'createdAt', 'actions'];
   loading = false;
   constructor(
     private adminService: AdminService,

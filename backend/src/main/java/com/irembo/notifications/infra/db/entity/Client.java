@@ -18,8 +18,8 @@ public class Client {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "api_key", unique = true, nullable = false)
-    private String apiKey;
+    @Column(name = "api_key_hash", unique = true, nullable = false, length = 255)
+    private String apiKeyHash; // BCrypt hash of the API key (60 chars)
 
     @Column(name = "name", nullable = false)
     private String name;

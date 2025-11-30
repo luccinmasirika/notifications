@@ -4,6 +4,7 @@ import com.irembo.notifications.infra.db.entity.Client;
 import com.irembo.notifications.infra.db.entity.ClientLimit;
 import com.irembo.notifications.infra.db.repository.ClientLimitRepository;
 import com.irembo.notifications.infra.db.repository.ClientRepository;
+import com.irembo.notifications.infra.redis.RedisCounterRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,6 +35,12 @@ class AdminServiceTest {
     @Mock
     private Cache cache;
 
+    @Mock
+    private RedisCounterRepository redisCounter;
+
+    @Mock
+    private ApiKeyHashService apiKeyHashService;
+
     @InjectMocks
     private AdminService adminService;
 
@@ -44,7 +51,9 @@ class AdminServiceTest {
     void setUp() {
         testClient = new Client();
         testClient.setId(1L);
-        testClient.setApiKey("test-api-key-123456");
+        // Use ApiKeyHashService to hash the API key (V8 migration - no plain text storage)
+        ApiKeyHashService hashService = new ApiKeyHashService();
+        testClient.setApiKeyHash(hashService.hashApiKey("test-api-key-123456"));
         testClient.setName("Test Client");
         testClient.setPriority(5);
         testClient.setActive(true);

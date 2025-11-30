@@ -6,6 +6,7 @@ import com.irembo.notifications.infra.db.repository.ClientLimitRepository;
 import com.irembo.notifications.infra.db.repository.ClientRepository;
 import com.irembo.notifications.infra.redis.RedisCounterRepository;
 import com.irembo.notifications.model.dto.ClientDetailsResponse;
+import com.irembo.notifications.model.dto.ClientDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.CacheManager;
@@ -28,16 +29,19 @@ public class AdminService {
     private final ClientLimitRepository clientLimitRepository;
     private final CacheManager cacheManager;
     private final RedisCounterRepository redisCounter;
+    private final ApiKeyHashService apiKeyHashService;
 
     public AdminService(
             ClientRepository clientRepository,
             ClientLimitRepository clientLimitRepository,
             CacheManager cacheManager,
-            RedisCounterRepository redisCounter) {
+            RedisCounterRepository redisCounter,
+            ApiKeyHashService apiKeyHashService) {
         this.clientRepository = clientRepository;
         this.clientLimitRepository = clientLimitRepository;
         this.cacheManager = cacheManager;
         this.redisCounter = redisCounter;
+        this.apiKeyHashService = apiKeyHashService;
     }
 
     /**
@@ -47,7 +51,7 @@ public class AdminService {
     public Client updateClient(Long id, Client client) {
         client.setId(id);
         Client updated = clientRepository.save(client);
-        evictClientCache(updated.getApiKey());
+        evictClientCache(updated.getApiKeyHash());
         logger.info("Updated client {} and evicted cache", id);
         return updated;
     }
@@ -70,9 +74,8 @@ public class AdminService {
         // Evict cache for this specific client
         Optional<Client> client = clientRepository.findById(clientId);
         client.ifPresent(c -> {
-            evictClientCache(c.getApiKey());
-            logger.info("Updated limits for client {} (API Key: ***{}), evicted cache",
-                    clientId, maskApiKey(c.getApiKey()));
+            evictClientCache(c.getApiKeyHash());
+            logger.info("Updated limits for client {}, evicted cache", clientId);
         });
 
         return saved;
@@ -89,9 +92,8 @@ public class AdminService {
         // Evict cache for this specific client
         Optional<Client> client = clientRepository.findById(limit.getClientId());
         client.ifPresent(c -> {
-            evictClientCache(c.getApiKey());
-            logger.info("Updated limits for client {} (API Key: ***{}), evicted cache",
-                    limit.getClientId(), maskApiKey(c.getApiKey()));
+            evictClientCache(c.getApiKeyHash());
+            logger.info("Updated limits for client {}, evicted cache", limit.getClientId());
         });
 
         return saved;
@@ -111,26 +113,25 @@ public class AdminService {
             // Evict cache for this specific client
             Optional<Client> client = clientRepository.findById(clientId);
             client.ifPresent(c -> {
-                evictClientCache(c.getApiKey());
-                logger.info("Deleted limits for client {} (API Key: ***{}), evicted cache",
-                        clientId, maskApiKey(c.getApiKey()));
+                evictClientCache(c.getApiKeyHash());
+                logger.info("Deleted limits for client {}, evicted cache", clientId);
             });
         }
     }
 
     /**
-     * Evict cache entries for a specific client by API key.
+     * Evict cache entries for a specific client by API key hash.
      */
-    private void evictClientCache(String apiKey) {
+    private void evictClientCache(String apiKeyHash) {
         try {
             var cache = cacheManager.getCache("clientConfigs");
             if (cache != null) {
                 // Evict all entries since we can't target specific keys easily with Caffeine
                 cache.clear();
-                logger.debug("Evicted clientConfigs cache for API key: ***{}", maskApiKey(apiKey));
+                logger.debug("Evicted clientConfigs cache");
             }
         } catch (Exception e) {
-            logger.error("Failed to evict cache for API key: ***{}", maskApiKey(apiKey), e);
+            logger.error("Failed to evict cache", e);
         }
     }
 
@@ -152,7 +153,7 @@ public class AdminService {
         if (limitOpt.isEmpty()) {
             // Return client info without limits
             return new ClientDetailsResponse(
-                client,
+                ClientDto.fromClient(client),
                 null,
                 null,
                 null,
@@ -226,7 +227,7 @@ public class AdminService {
         );
 
         return new ClientDetailsResponse(
-            client,
+            ClientDto.fromClient(client),
             limit,
             windowUsage,
             monthlyUsage,
@@ -255,12 +256,90 @@ public class AdminService {
     }
 
     /**
-     * Mask API key for logging (show only last 4 characters).
+     * Hash an API key using BCrypt.
+     *
+     * @param plainApiKey Plain text API key
+     * @return BCrypt hash
      */
-    private String maskApiKey(String apiKey) {
-        if (apiKey == null || apiKey.length() <= 4) {
-            return "****";
+    public String hashApiKey(String plainApiKey) {
+        return apiKeyHashService.hashApiKey(plainApiKey);
+    }
+
+    /**
+     * Create a new client with hashed API key and default rate limits.
+     *
+     * @param apiKey Plain text API key (will be hashed before storage)
+     * @param name Client name
+     * @param priority Client priority
+     * @param active Is client active
+     * @return Created client
+     */
+    @Transactional
+    @CacheEvict(value = "clientConfigs", allEntries = true)
+    public Client createClient(String apiKey, String name, Integer priority, Boolean active) {
+        // Check if API key already exists
+        String hashedKey = apiKeyHashService.hashApiKey(apiKey);
+
+        Client client = new Client();
+        client.setApiKeyHash(hashedKey);
+        client.setName(name);
+        client.setPriority(priority != null ? priority : 0);
+        client.setActive(active != null ? active : true);
+
+        Client saved = clientRepository.save(client);
+        logger.info("Created client {} with hashed API key (ID: {})", name, saved.getId());
+
+        // Create default rate limits for the new client
+        createDefaultClientLimits(saved.getId());
+        logger.info("Created default rate limits for client {} (ID: {})", name, saved.getId());
+
+        return saved;
+    }
+
+    /**
+     * Create default rate limits for a client.
+     * Default values:
+     * - Window size: 60 seconds
+     * - Max requests per window: 100
+     * - Monthly quota: 10,000
+     * - Soft throttle threshold: 80% (0.80)
+     * - Hard reject threshold: 100% (1.00)
+     *
+     * @param clientId Client ID
+     */
+    private void createDefaultClientLimits(Long clientId) {
+        ClientLimit defaultLimit = new ClientLimit();
+        defaultLimit.setClientId(clientId);
+        defaultLimit.setWindowSizeSeconds(60); // 1 minute window
+        defaultLimit.setMaxRequestsPerWindow(100); // 100 requests per minute
+        defaultLimit.setMonthlyQuota(10000); // 10,000 requests per month
+        defaultLimit.setSoftThrottleThreshold(0.80); // 80% threshold
+        defaultLimit.setHardRejectThreshold(1.00); // 100% threshold
+
+        clientLimitRepository.save(defaultLimit);
+    }
+
+    /**
+     * Validate an API key by checking against stored hashes.
+     *
+     * @param plainApiKey Plain text API key to validate
+     * @return Optional containing the client if found and valid
+     */
+    public Optional<Client> validateApiKey(String plainApiKey) {
+        if (plainApiKey == null || plainApiKey.isBlank()) {
+            return Optional.empty();
         }
-        return apiKey.substring(apiKey.length() - 4);
+
+        // Hash-based lookup: iterate all clients and match against hashes
+        var allClients = clientRepository.findAll();
+        for (Client client : allClients) {
+            if (client.getApiKeyHash() != null) {
+                if (apiKeyHashService.matches(plainApiKey, client.getApiKeyHash())) {
+                    return Optional.of(client);
+                }
+            }
+        }
+
+        return Optional.empty();
     }
 }

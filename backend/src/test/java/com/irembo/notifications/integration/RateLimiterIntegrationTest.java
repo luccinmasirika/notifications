@@ -7,6 +7,7 @@ import com.irembo.notifications.infra.db.repository.ClientLimitRepository;
 import com.irembo.notifications.infra.db.repository.ClientRepository;
 import com.irembo.notifications.model.dto.NotificationRequest;
 import com.irembo.notifications.model.enums.NotificationChannel;
+import com.irembo.notifications.service.ApiKeyHashService;
 import com.redis.testcontainers.RedisContainer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -77,9 +78,10 @@ class RateLimiterIntegrationTest {
         clientLimitRepository.deleteAll();
         clientRepository.deleteAll();
 
-        // Create test client
+        // Create test client (V8: use hash instead of plain text API key)
         testClient = new Client();
-        testClient.setApiKey(testApiKey);
+        ApiKeyHashService hashService = new ApiKeyHashService();
+        testClient.setApiKeyHash(hashService.hashApiKey(testApiKey));
         testClient.setName("Integration Test Client");
         testClient.setActive(true);
         testClient.setPriority(1);

@@ -3,7 +3,7 @@ package com.irembo.notifications.filter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.irembo.notifications.infra.db.entity.Client;
-import com.irembo.notifications.infra.db.repository.ClientRepository;
+import com.irembo.notifications.service.AdminService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.*;
 class APIKeyAuthFilterTest {
 
     @Mock
-    private ClientRepository clientRepository;
+    private AdminService adminService;
 
     @Mock
     private HttpServletRequest request;
@@ -46,7 +46,7 @@ class APIKeyAuthFilterTest {
         // Use a real ObjectMapper for testing with JSR310 support to ensure proper JSON serialization
         ObjectMapper testObjectMapper = new ObjectMapper();
         testObjectMapper.registerModule(new JavaTimeModule());
-        filter = new APIKeyAuthFilter(clientRepository, testObjectMapper);
+        filter = new APIKeyAuthFilter(adminService, testObjectMapper);
 
         // Setup response writer (lenient as not all tests write responses)
         responseWriter = new StringWriter();
@@ -64,7 +64,7 @@ class APIKeyAuthFilterTest {
 
         // Then
         verify(filterChain).doFilter(request, response);
-        verify(clientRepository, never()).findByApiKey(anyString());
+        verify(adminService, never()).validateApiKey(anyString());
     }
 
     @Test
@@ -78,7 +78,7 @@ class APIKeyAuthFilterTest {
 
         // Then
         verify(filterChain).doFilter(request, response);
-        verify(clientRepository, never()).findByApiKey(anyString());
+        verify(adminService, never()).validateApiKey(anyString());
     }
 
     @Test
@@ -107,7 +107,7 @@ class APIKeyAuthFilterTest {
         // Given
         when(request.getRequestURI()).thenReturn("/api/notifications");
         when(request.getHeader("X-API-KEY")).thenReturn("invalid-key");
-        when(clientRepository.findByApiKey("invalid-key")).thenReturn(Optional.empty());
+        when(adminService.validateApiKey("invalid-key")).thenReturn(Optional.empty());
 
         // When
         filter.doFilterInternal(request, response, filterChain);
@@ -126,12 +126,14 @@ class APIKeyAuthFilterTest {
         // Given
         Client inactiveClient = new Client();
         inactiveClient.setId(1L);
-        inactiveClient.setApiKey("test-key");
+        // V8: Use ApiKeyHashService to hash the key
+        com.irembo.notifications.service.ApiKeyHashService hashService = new com.irembo.notifications.service.ApiKeyHashService();
+        inactiveClient.setApiKeyHash(hashService.hashApiKey("test-key"));
         inactiveClient.setActive(false);
 
         when(request.getRequestURI()).thenReturn("/api/notifications");
         when(request.getHeader("X-API-KEY")).thenReturn("test-key");
-        when(clientRepository.findByApiKey("test-key")).thenReturn(Optional.of(inactiveClient));
+        when(adminService.validateApiKey("test-key")).thenReturn(Optional.of(inactiveClient));
 
         // When
         filter.doFilterInternal(request, response, filterChain);
@@ -150,13 +152,15 @@ class APIKeyAuthFilterTest {
         // Given
         Client activeClient = new Client();
         activeClient.setId(1L);
-        activeClient.setApiKey("valid-key");
+        // V8: Use ApiKeyHashService to hash the key
+        com.irembo.notifications.service.ApiKeyHashService hashService = new com.irembo.notifications.service.ApiKeyHashService();
+        activeClient.setApiKeyHash(hashService.hashApiKey("valid-key"));
         activeClient.setName("Test Client");
         activeClient.setActive(true);
 
         when(request.getRequestURI()).thenReturn("/api/notifications");
         when(request.getHeader("X-API-KEY")).thenReturn("valid-key");
-        when(clientRepository.findByApiKey("valid-key")).thenReturn(Optional.of(activeClient));
+        when(adminService.validateApiKey("valid-key")).thenReturn(Optional.of(activeClient));
 
         // When
         filter.doFilterInternal(request, response, filterChain);

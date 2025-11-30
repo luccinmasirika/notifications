@@ -1,16 +1,16 @@
 package com.irembo.notifications.model.dto;
 
-import com.irembo.notifications.infra.db.entity.Client;
 import com.irembo.notifications.infra.db.entity.ClientLimit;
 
 import java.time.Instant;
 
 /**
  * Complete client details including usage statistics, limits, and status.
+ * Note: Client information does NOT include apiKeyHash for security reasons.
  */
 public record ClientDetailsResponse(
-    // Client information
-    Client client,
+    // Client information (without apiKeyHash)
+    ClientDto client,
     
     // Rate limit configuration
     ClientLimit limit,

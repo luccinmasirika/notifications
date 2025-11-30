@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
  * Request DTO for creating a new client.
  */
 public record CreateClientRequest(
-        @NotBlank(message = "API key is required")
+        // API key is optional - will be auto-generated if not provided
         @Size(min = 16, max = 255, message = "API key must be between 16 and 255 characters")
         String apiKey,
 

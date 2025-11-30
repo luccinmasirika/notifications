@@ -2,7 +2,7 @@ package com.irembo.notifications.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.irembo.notifications.infra.db.entity.Client;
-import com.irembo.notifications.infra.db.repository.ClientRepository;
+import com.irembo.notifications.service.AdminService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,11 +33,11 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
 
     private static final String API_KEY_HEADER = "X-API-KEY";
 
-    private final ClientRepository clientRepository;
+    private final AdminService adminService;
     private final ObjectMapper objectMapper;
 
-    public APIKeyAuthFilter(ClientRepository clientRepository, ObjectMapper objectMapper) {
-        this.clientRepository = clientRepository;
+    public APIKeyAuthFilter(AdminService adminService, ObjectMapper objectMapper) {
+        this.adminService = adminService;
         this.objectMapper = objectMapper;
     }
 
@@ -65,8 +65,8 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Validate API key
-        Optional<Client> clientOpt = clientRepository.findByApiKey(apiKey);
+        // Validate API key (supports both hashed and plain text for backward compatibility)
+        Optional<Client> clientOpt = adminService.validateApiKey(apiKey);
 
         if (clientOpt.isEmpty()) {
             logger.warn("Invalid API key attempted: {}", maskApiKey(apiKey));

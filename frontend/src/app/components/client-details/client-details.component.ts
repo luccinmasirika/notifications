@@ -74,13 +74,6 @@ export class ClientDetailsComponent implements OnInit {
       this.router.navigate(['/clients', this.clientId, 'limits']);
     }
   }
-  onTest(): void {
-    if (this.details?.client.apiKey) {
-      this.router.navigate(['/client-test'], {
-        queryParams: { apiKey: this.details.client.apiKey }
-      });
-    }
-  }
   formatDate(dateString?: string | null): string {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleString();

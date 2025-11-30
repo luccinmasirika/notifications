@@ -3,6 +3,7 @@ package com.irembo.notifications.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.irembo.notifications.infra.db.entity.Client;
 import com.irembo.notifications.infra.db.entity.ClientLimit;
+import com.irembo.notifications.service.ApiKeyHashService;
 import com.irembo.notifications.infra.db.repository.ClientLimitRepository;
 import com.irembo.notifications.infra.db.repository.ClientRepository;
 import com.irembo.notifications.model.dto.ClientLimitRequest;
@@ -59,7 +60,9 @@ class AdminControllerTest {
     void setUp() {
         testClient = new Client();
         testClient.setId(1L);
-        testClient.setApiKey("test-api-key-12345");
+        // V8: Use ApiKeyHashService to hash the API key
+        ApiKeyHashService hashService = new ApiKeyHashService();
+        testClient.setApiKeyHash(hashService.hashApiKey("test-api-key-12345"));
         testClient.setName("Test Client");
         testClient.setPriority(5);
         testClient.setActive(true);

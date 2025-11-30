@@ -27,17 +27,15 @@
           </mat-form-field>
         </div>
 
-        <div class="form-row">
+        <!-- API Key field only shown in edit mode if user wants to change it -->
+        <div class="form-row" *ngIf="isEditMode">
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'client.apiKey' | translate }}</mat-label>
+            <mat-label>{{ 'client.apiKey' | translate }} ({{ getTranslation('client.optional', 'Optional') }})</mat-label>
             <input matInput formControlName="apiKey" [placeholder]="'client.apiKeyPlaceholder' | translate">
             <button mat-icon-button matSuffix type="button" (click)="generateApiKey()" [matTooltip]="'client.generateApiKey' | translate">
               <mat-icon>auto_awesome</mat-icon>
             </button>
-            <mat-hint>{{ 'client.apiKeyHint' | translate }}</mat-hint>
-            <mat-error *ngIf="clientForm.get('apiKey')?.hasError('required')">
-              {{ getErrorMessage('apiKey') }}
-            </mat-error>
+            <mat-hint>{{ getTranslation('client.apiKeyChangeHint', 'Leave empty to keep current API key') }}</mat-hint>
             <mat-error *ngIf="clientForm.get('apiKey')?.hasError('minlength')">
               {{ getErrorMessage('apiKey') }}
             </mat-error>
@@ -81,6 +79,30 @@
           </button>
         </div>
       </form>
+
+      <!-- Display generated API key directly on page (no modal) -->
+      <div *ngIf="showApiKey && generatedApiKey" class="api-key-display-section">
+        <div class="api-key-box">
+          <div class="api-key-content">
+            <div class="api-key-label">
+              <mat-icon>vpn_key</mat-icon>
+              <span>{{ getTranslation('client.apiKey', 'API Key') }}</span>
+            </div>
+            <div class="api-key-value">
+              <code>{{ generatedApiKey }}</code>
+              <button mat-icon-button (click)="copyToClipboard(generatedApiKey)" [matTooltip]="'common.copy' | translate">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </div>
+            <div class="api-key-footer">
+              <p class="api-key-hint">{{ getTranslation('client.saveApiKeyHint', 'Save this key - it won\'t be shown again') }}</p>
+              <button mat-raised-button color="primary" (click)="onContinue()" class="continue-button">
+                {{ getTranslation('common.continue', 'Continue') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </mat-card-content>
   </mat-card>
 </div>

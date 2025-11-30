@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Client, ClientLimit, CreateClientRequest, UpdateClientRequest, ClientLimitRequest, ClientDetailsResponse, SystemLimit, SystemLimitRequest } from '../models/client.model';
+import { Client, ClientLimit, CreateClientRequest, UpdateClientRequest, ClientLimitRequest, ClientDetailsResponse, ClientResponse, SystemLimit, SystemLimitRequest } from '../models/client.model';
 import { AuthService } from './auth.service';
 import { ConfigService } from './config.service';
 
@@ -50,12 +50,12 @@ export class AdminService {
     return this.http.get<Client>(`${this.apiUrl}/clients/${id}`, { headers: this.getHeaders() });
   }
 
-  createClient(request: CreateClientRequest): Observable<Client> {
-    return this.http.post<Client>(`${this.apiUrl}/clients`, request, { headers: this.getHeaders() });
+  createClient(request: CreateClientRequest): Observable<ClientResponse> {
+    return this.http.post<ClientResponse>(`${this.apiUrl}/clients`, request, { headers: this.getHeaders() });
   }
 
-  updateClient(id: number, request: UpdateClientRequest): Observable<Client> {
-    return this.http.put<Client>(`${this.apiUrl}/clients/${id}`, request, { headers: this.getHeaders() });
+  updateClient(id: number, request: UpdateClientRequest): Observable<ClientResponse> {
+    return this.http.put<ClientResponse>(`${this.apiUrl}/clients/${id}`, request, { headers: this.getHeaders() });
   }
 
   updateClientLimits(id: number, request: ClientLimitRequest): Observable<ClientLimit> {
@@ -80,5 +80,12 @@ export class AdminService {
 
   createOrUpdateSystemLimit(limit: SystemLimitRequest | SystemLimit): Observable<SystemLimit> {
     return this.http.post<SystemLimit>(`${this.apiUrl}/system-limits`, limit, { headers: this.getHeaders() });
+  }
+
+  generateApiKey(): Observable<{apiKey: string, message: string, timestamp: string}> {
+    return this.http.get<{apiKey: string, message: string, timestamp: string}>(
+      `${this.apiUrl}/generate-api-key`,
+      { headers: this.getHeaders() }
+    );
   }
 }
