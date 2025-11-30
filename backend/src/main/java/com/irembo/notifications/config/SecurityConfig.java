@@ -18,6 +18,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Security Configuration.
@@ -32,6 +34,15 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    /**
+     * CORS allowed origins configuration.
+     * Can be overridden via environment variable CORS_ALLOWED_ORIGINS or Spring property cors.allowed-origins.
+     * Format: comma-separated list of origins (e.g., "http://localhost:80,https://example.com")
+     * Default: localhost origins for development
+     */
+    @Value("${cors.allowed-origins:http://localhost,http://localhost:80,http://localhost:4200,http://localhost:8080}")
+    private String allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -62,10 +73,22 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * CORS configuration source.
+     * Configures allowed origins from environment variable CORS_ALLOWED_ORIGINS or application property.
+     * Origins are parsed from a comma-separated string.
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200", "http://localhost:8080"));
+        
+        // Parse comma-separated origins from configuration
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .collect(Collectors.toList());
+        
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);

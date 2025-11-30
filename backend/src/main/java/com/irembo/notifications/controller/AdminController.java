@@ -13,8 +13,10 @@ import com.irembo.notifications.model.dto.SystemLimitRequest;
 import com.irembo.notifications.model.dto.UpdateClientRequest;
 import com.irembo.notifications.service.AdminService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +29,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/admin")
+@Validated
 public class AdminController {
 
     private final ClientRepository clientRepository;
@@ -57,7 +60,7 @@ public class AdminController {
      * Get a specific client by ID.
      */
     @GetMapping("/clients/{id}")
-    public ResponseEntity<?> getClient(@PathVariable Long id) {
+    public ResponseEntity<?> getClient(@PathVariable @Min(1) Long id) {
         Optional<Client> client = clientRepository.findById(id);
         if (client.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -70,7 +73,7 @@ public class AdminController {
      * Get complete client details including usage statistics, limits, and status.
      */
     @GetMapping("/clients/{id}/details")
-    public ResponseEntity<?> getClientDetails(@PathVariable Long id) {
+    public ResponseEntity<?> getClientDetails(@PathVariable @Min(1) Long id) {
         try {
             ClientDetailsResponse details = adminService.getClientDetails(id);
             return ResponseEntity.ok(details);
@@ -103,7 +106,7 @@ public class AdminController {
      * Note: Cache is evicted for this client when updated.
      */
     @PutMapping("/clients/{id}")
-    public ResponseEntity<?> updateClient(@PathVariable Long id, @Valid @RequestBody UpdateClientRequest request) {
+    public ResponseEntity<?> updateClient(@PathVariable @Min(1) Long id, @Valid @RequestBody UpdateClientRequest request) {
         Optional<Client> existing = clientRepository.findById(id);
         if (existing.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -134,7 +137,7 @@ public class AdminController {
      * Note: Cache is automatically evicted when limits are updated.
      */
     @PutMapping("/clients/{id}/limits")
-    public ResponseEntity<?> updateClientLimits(@PathVariable Long id, @Valid @RequestBody ClientLimitRequest request) {
+    public ResponseEntity<?> updateClientLimits(@PathVariable @Min(1) Long id, @Valid @RequestBody ClientLimitRequest request) {
         if (!clientRepository.existsById(id)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Client not found", "id", id));
@@ -159,7 +162,7 @@ public class AdminController {
      * Delete a client.
      */
     @DeleteMapping("/clients/{id}")
-    public ResponseEntity<?> deleteClient(@PathVariable Long id) {
+    public ResponseEntity<?> deleteClient(@PathVariable @Min(1) Long id) {
         if (!clientRepository.existsById(id)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Client not found", "id", id));
@@ -180,7 +183,7 @@ public class AdminController {
      * Get limit for a specific client.
      */
     @GetMapping("/limits/client/{clientId}")
-    public ResponseEntity<?> getClientLimit(@PathVariable Long clientId) {
+    public ResponseEntity<?> getClientLimit(@PathVariable @Min(1) Long clientId) {
         Optional<ClientLimit> limit = clientLimitRepository.findByClientId(clientId);
         if (limit.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -194,7 +197,7 @@ public class AdminController {
      * Note: Cache is automatically evicted when limits are updated.
      */
     @PostMapping("/limits")
-    public ResponseEntity<ClientLimit> createOrUpdateLimit(@RequestBody ClientLimit limit) {
+    public ResponseEntity<ClientLimit> createOrUpdateLimit(@Valid @RequestBody ClientLimit limit) {
         // Check if limit already exists for this client
         Optional<ClientLimit> existing = clientLimitRepository.findByClientId(limit.getClientId());
 
@@ -207,7 +210,7 @@ public class AdminController {
      * Note: Cache is automatically evicted when limits are deleted.
      */
     @DeleteMapping("/limits/{id}")
-    public ResponseEntity<?> deleteLimit(@PathVariable Long id) {
+    public ResponseEntity<?> deleteLimit(@PathVariable @Min(1) Long id) {
         if (!clientLimitRepository.existsById(id)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Client limit not found", "id", id));

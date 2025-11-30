@@ -1,5 +1,6 @@
 package com.irembo.notifications.model.dto;
 
+import com.irembo.notifications.validation.ValidThresholds;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
@@ -8,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 /**
  * Request DTO for creating or updating client limits.
  */
+@ValidThresholds
 public record ClientLimitRequest(
         @NotNull(message = "Window size in seconds is required")
         @Min(value = 1, message = "Window size must be at least 1 second")
