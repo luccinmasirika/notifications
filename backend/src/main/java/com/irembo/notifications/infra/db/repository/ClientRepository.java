@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -15,6 +16,12 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     Optional<Client> findByApiKeyHash(String apiKeyHash);
 
     boolean existsByApiKeyHash(String apiKeyHash);
+
+    /**
+     * Find client by SHA-256 index for fast O(1) lookup.
+     * Used to quickly locate a client before performing BCrypt verification.
+     */
+    Optional<Client> findByApiKeyIndex(String apiKeyIndex);
 
     /**
      * Count active clients efficiently using a database query.
@@ -39,4 +46,10 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
      * Find only active clients with pagination support.
      */
     Page<Client> findByActiveTrue(Pageable pageable);
+
+    /**
+     * Find all active clients without pagination.
+     * Used for API key validation where we need to iterate through all active clients.
+     */
+    List<Client> findByActiveTrue();
 }

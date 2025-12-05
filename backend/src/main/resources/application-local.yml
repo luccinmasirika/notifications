@@ -1,0 +1,24 @@
+# Local Development Configuration
+# This file is for local development only and should NOT be committed to git
+# It contains default development credentials
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/notifications
+    username: postgres
+    password: postgres
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+admin:
+  username: admin
+  password: admin123
+
+cache:
+  type: caffeine  # Use local cache for development
+
+cors:
+  allowed-origins: "http://localhost,http://localhost:1015,http://localhost:4200,http://localhost:8080"

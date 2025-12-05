@@ -211,25 +211,26 @@ public class AdminController {
 
         Client client = existing.get();
         String newApiKey = null;
+        Client updated;
         
         // Only update fields that are provided
         if (request.apiKey() != null && !request.apiKey().isBlank()) {
-            // Re-hash the API key if it's being updated
+            // Use dedicated method for API key update (uses fast validation: SHA-256 + salt)
             newApiKey = request.apiKey();
-            String hashedKey = adminService.hashApiKey(newApiKey);
-            client.setApiKeyHash(hashedKey);
+            updated = adminService.updateClientApiKey(id, newApiKey);
+        } else {
+            // Update other fields only (name, priority, active)
+            if (request.name() != null) {
+                client.setName(request.name());
+            }
+            if (request.priority() != null) {
+                client.setPriority(request.priority());
+            }
+            if (request.active() != null) {
+                client.setActive(request.active());
+            }
+            updated = adminService.updateClient(id, client);
         }
-        if (request.name() != null) {
-            client.setName(request.name());
-        }
-        if (request.priority() != null) {
-            client.setPriority(request.priority());
-        }
-        if (request.active() != null) {
-            client.setActive(request.active());
-        }
-
-        Client updated = adminService.updateClient(id, client);
         
         // If API key was updated, return it in the response (only time it's visible)
         if (newApiKey != null) {

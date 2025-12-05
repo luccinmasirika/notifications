@@ -21,6 +21,12 @@ public class Client {
     @Column(name = "api_key_hash", unique = true, nullable = false, length = 255)
     private String apiKeyHash; // BCrypt hash of the API key (60 chars)
 
+    @Column(name = "api_key_index", unique = true, nullable = true, length = 64)
+    private String apiKeyIndex; // SHA-256 hash for fast O(1) lookup (64 hex chars)
+
+    @Column(name = "client_salt", unique = true, nullable = true, length = 64)
+    private String clientSalt; // Unique salt per client for fast SHA-256 validation (64 hex chars)
+
     @Column(name = "name", nullable = false)
     private String name;
 

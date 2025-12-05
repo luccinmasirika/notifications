@@ -5,6 +5,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 /**
  * Service for hashing and validating API keys using BCrypt.
  *
@@ -16,6 +20,10 @@ import org.springframework.stereotype.Service;
  * Strength level 12 is chosen as a balance between:
  * - Security: Strong enough against current hardware
  * - Performance: Fast enough for API key validation (~200ms)
+ *
+ * Performance optimization:
+ * - Uses SHA-256 index for O(1) database lookup
+ * - Only performs BCrypt verification on the matching client (1 verification max)
  */
 @Service
 public class ApiKeyHashService {
@@ -96,5 +104,43 @@ public class ApiKeyHashService {
 
         // BCrypt hashes are always 60 characters and start with $2a$ or $2b$ or $2y$
         return hash.length() == 60 && hash.matches("^\\$2[ayb]\\$\\d{2}\\$.{53}$");
+    }
+
+    /**
+     * Calculate SHA-256 hash of an API key for fast database lookup.
+     *
+     * This is a deterministic hash (same input = same output) used as an index
+     * to enable O(1) database lookup instead of O(n) BCrypt verification loop.
+     *
+     * Security note: SHA-256 alone is NOT secure for password/API key storage.
+     * It's only used as a fast lookup index. The actual security comes from BCrypt.
+     *
+     * @param plainApiKey Plain text API key
+     * @return SHA-256 hash (64 hex characters)
+     */
+    public String calculateApiKeyIndex(String plainApiKey) {
+        if (plainApiKey == null || plainApiKey.isBlank()) {
+            throw new IllegalArgumentException("API key cannot be null or blank");
+        }
+
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashBytes = digest.digest(plainApiKey.getBytes(StandardCharsets.UTF_8));
+            
+            // Convert bytes to hex string
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hashBytes) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            logger.error("SHA-256 algorithm not available", e);
+            throw new RuntimeException("SHA-256 algorithm not available", e);
+        }
     }
 }

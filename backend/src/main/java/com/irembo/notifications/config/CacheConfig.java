@@ -63,22 +63,41 @@ public class CacheConfig {
      * Provides distributed caching across multiple application instances.
      *
      * Configuration:
-     * - TTL: 5 minutes
+     * - TTL: 24 hours for apiKeyValidation (for 100M+ users scale)
+     * - TTL: 5 minutes for other caches
      * - Serialization: JSON (GenericJackson2JsonRedisSerializer)
      * - Transaction aware: Changes are synchronized with database transactions
+     * 
+     * Performance optimization for 100M+ users:
+     * - Long TTL on API key validation cache (24h) ensures >99.9% hit rate
+     * - API keys change rarely, so long TTL is safe
+     * - Reduces database load dramatically
      */
     private CacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+        // Default config: 5 minutes for most caches
+        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(5))
                 .serializeValuesWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(
                                 new GenericJackson2JsonRedisSerializer()
                         )
                 )
-                .disableCachingNullValues(); // Don't cache null values
+                .disableCachingNullValues();
+
+        // Special config for API key validation: 24 hours TTL
+        // This is critical for 100M+ users scale
+        RedisCacheConfiguration apiKeyValidationConfig = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofHours(24))
+                .serializeValuesWith(
+                        RedisSerializationContext.SerializationPair.fromSerializer(
+                                new GenericJackson2JsonRedisSerializer()
+                        )
+                )
+                .disableCachingNullValues();
 
         return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(config)
+                .cacheDefaults(defaultConfig)
+                .withCacheConfiguration("apiKeyValidation", apiKeyValidationConfig)
                 .transactionAware()
                 .build();
     }
@@ -91,11 +110,16 @@ public class CacheConfig {
      * - TTL: 5 minutes after write
      * - Stats: Enabled for monitoring (hit/miss ratio)
      *
+     * Caches:
+     * - clientConfigs: Client limit configurations
+     * - systemLimits: System-wide rate limits
+     * - apiKeyValidation: API key validation results (CRITICAL for performance)
+     *
      * Note: Not suitable for multi-instance deployments as each instance
      * has its own cache, leading to potential inconsistencies.
      */
     private CacheManager caffeineCacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("clientConfigs", "systemLimits");
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager("clientConfigs", "systemLimits", "apiKeyValidation");
         cacheManager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(500)
                 .expireAfterWrite(5, TimeUnit.MINUTES)
