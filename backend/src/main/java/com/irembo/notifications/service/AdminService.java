@@ -403,11 +403,6 @@ public class AdminService {
      * @param plainApiKey Plain text API key to validate
      * @return Optional containing the client if found and valid
      */
-    @org.springframework.cache.annotation.Cacheable(
-        value = "apiKeyValidation",
-        key = "#plainApiKey",
-        unless = "#result.isEmpty()"
-    )
     public Optional<Client> validateApiKey(String plainApiKey) {
         if (plainApiKey == null || plainApiKey.isBlank()) {
             return Optional.empty();

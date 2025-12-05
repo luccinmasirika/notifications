@@ -19,6 +19,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.YearMonth;
 import java.util.Optional;
 
 @Service
@@ -90,6 +91,7 @@ public class RateLimiterService {
 
     /**
      * Internal implementation of rate limit check.
+     * Uses atomic Redis operations to eliminate race conditions in distributed environments.
      * Wrapped by checkAndConsume() for metrics.
      */
     private RateDecision executeCheckAndConsume(String apiKey, String channel) {
@@ -114,48 +116,115 @@ public class RateLimiterService {
 
         ClientLimit clientLimit = clientLimitOpt.get();
 
-        // 3. Check global system limits first
+        // 3. Get global system limits if configured
         Optional<SystemLimit> globalLimitOpt = findGlobalLimit();
+
+        // 4. Prepare keys and thresholds for atomic operation
+        long now = Instant.now().getEpochSecond();
+        long windowStart = (now / clientLimit.getWindowSizeSeconds()) * clientLimit.getWindowSizeSeconds();
+        String windowKey = String.format("rate:client:%s:window:%d", client.getId(), windowStart);
+        
+        String yearMonth = redisCounter.getCurrentYearMonth();
+        String monthlyKey = String.format("rate:client:%s:monthly:%s", client.getId(), yearMonth);
+        
+        String globalKey = null;
+        Long globalLimit = null;
+        int globalWindowSize = 0;
         if (globalLimitOpt.isPresent()) {
-            SystemLimit globalLimit = globalLimitOpt.get();
-            RateDecision globalDecision = checkGlobalLimit(globalLimit);
-            if (globalDecision.type() == DecisionType.HARD_REJECT) {
-                return globalDecision;
-            }
+            SystemLimit globalLimitEntity = globalLimitOpt.get();
+            globalWindowSize = globalLimitEntity.getWindowSizeSeconds();
+            long globalWindowStart = (now / globalWindowSize) * globalWindowSize;
+            globalKey = String.format("rate:global:window:%d", globalWindowStart);
+            globalLimit = Long.valueOf(globalLimitEntity.getMaxRequestsPerWindow());
         }
 
-        // 4. Check client window limit
-        RateDecision windowDecision = checkClientWindowLimit(client.getId().toString(), clientLimit);
-        if (windowDecision.type() == DecisionType.HARD_REJECT) {
-            return windowDecision;
-        }
+        // Get thresholds
+        double windowHardThreshold = clientLimit.getHardRejectThreshold() != null
+                ? clientLimit.getHardRejectThreshold() : DEFAULT_HARD_REJECT_THRESHOLD;
+        double windowSoftThreshold = clientLimit.getSoftThrottleThreshold() != null
+                ? clientLimit.getSoftThrottleThreshold() : DEFAULT_SOFT_THROTTLE_THRESHOLD;
+        double monthlyHardThreshold = windowHardThreshold; // Same thresholds for monthly
+        double monthlySoftThreshold = windowSoftThreshold;
 
-        // 5. Check client monthly quota
-        RateDecision monthlyDecision = checkClientMonthlyQuota(client.getId().toString(), clientLimit);
-        if (monthlyDecision.type() == DecisionType.HARD_REJECT) {
-            return monthlyDecision;
-        }
+        // Calculate expiration times
+        YearMonth ym = YearMonth.parse(yearMonth);
+        int monthlyExpireDays = ym.lengthOfMonth() + 1;
 
-        // 6. Increment counters (consume the request)
-        // Use batch increment with pipelining to reduce Redis RTT from 3-4 calls to 1
-        // Performance improvement: ~60-75% latency reduction
-        boolean hasGlobal = globalLimitOpt.isPresent();
-        int globalWindowSize = hasGlobal ? globalLimitOpt.get().getWindowSizeSeconds() : 0;
-
-        redisCounter.batchIncrementCounters(
-            client.getId().toString(),
-            clientLimit.getWindowSizeSeconds(),
-            hasGlobal,
-            globalWindowSize
+        // 5. Perform atomic check and increment for all limits
+        // This eliminates race conditions in distributed environments
+        var batchResult = redisCounter.atomicCheckAndIncrementBatch(
+                client.getId().toString(),
+                windowKey,
+                clientLimit.getMaxRequestsPerWindow(),
+                windowHardThreshold,
+                windowSoftThreshold,
+                clientLimit.getWindowSizeSeconds(),
+                monthlyKey,
+                clientLimit.getMonthlyQuota(),
+                monthlyHardThreshold,
+                monthlySoftThreshold,
+                monthlyExpireDays,
+                globalKey,
+                globalLimit,
+                globalWindowSize
         );
-        // Note: We don't need the returned counts since we already checked limits above
 
-        // 7. Return the most restrictive decision (soft throttle takes precedence over allow)
-        if (windowDecision.type() == DecisionType.SOFT_THROTTLE || monthlyDecision.type() == DecisionType.SOFT_THROTTLE) {
-            return windowDecision.usagePercent() > monthlyDecision.usagePercent() ? windowDecision : monthlyDecision;
+        // 6. Determine the final decision based on atomic results
+        int mostRestrictiveDecision = batchResult.getMostRestrictiveDecision();
+        double maxUsagePercent = batchResult.getMaxUsagePercent();
+
+        // Get reset times
+        Instant windowReset = redisCounter.getWindowResetTime(clientLimit.getWindowSizeSeconds());
+        Instant monthlyReset = redisCounter.getMonthlyResetTime();
+
+        // Build rate decision based on the most restrictive limit
+        if (mostRestrictiveDecision == 2) { // HARD_REJECT
+            // Find which limit caused the rejection
+            var windowResult = batchResult.windowResult();
+            var monthlyResult = batchResult.monthlyResult();
+            var globalResult = batchResult.globalResult();
+
+            long limit = clientLimit.getMaxRequestsPerWindow();
+            Instant resetTime = windowReset;
+            
+            if (globalResult != null && globalResult.decision() == 2 && globalLimit != null) {
+                limit = globalLimit;
+                resetTime = redisCounter.getWindowResetTime(globalWindowSize);
+                logger.warn("Global rate limit hard reject: usage: {}%", String.format("%.2f", maxUsagePercent));
+            } else if (monthlyResult != null && monthlyResult.decision() == 2) {
+                limit = clientLimit.getMonthlyQuota();
+                resetTime = monthlyReset;
+                logger.warn("Client {} monthly quota hard reject: usage: {}%", 
+                        client.getId(), String.format("%.2f", maxUsagePercent));
+            } else if (windowResult != null && windowResult.decision() == 2) {
+                logger.warn("Client {} window limit hard reject: usage: {}%", 
+                        client.getId(), String.format("%.2f", maxUsagePercent));
+            }
+
+            hardRejectCounter.increment();
+            return RateDecision.hardReject(limit, resetTime, maxUsagePercent);
         }
 
-        return windowDecision;
+        // Calculate remaining and determine if soft throttle
+        var windowResult = batchResult.windowResult();
+        var monthlyResult = batchResult.monthlyResult();
+        
+        long windowRemaining = windowResult != null 
+                ? Math.max(0, clientLimit.getMaxRequestsPerWindow() - windowResult.count()) : 0;
+        long monthlyRemaining = monthlyResult != null
+                ? Math.max(0, clientLimit.getMonthlyQuota() - monthlyResult.count()) : 0;
+        long remaining = Math.min(windowRemaining, monthlyRemaining);
+
+        if (mostRestrictiveDecision == 1) { // SOFT_THROTTLE
+            softThrottleCounter.increment();
+            logger.info("Rate limit soft throttle: usage: {}%", String.format("%.2f", maxUsagePercent));
+            return RateDecision.softThrottle(
+                    clientLimit.getMaxRequestsPerWindow(), remaining, windowReset, maxUsagePercent);
+        }
+
+        // ALLOW
+        return RateDecision.allow(
+                clientLimit.getMaxRequestsPerWindow(), remaining, windowReset, maxUsagePercent);
     }
 
     /**

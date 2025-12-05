@@ -4,7 +4,8 @@ import com.irembo.notifications.infra.db.entity.Client;
 import com.irembo.notifications.infra.db.repository.ClientRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -37,15 +38,19 @@ import java.util.Optional;
 public class ApiKeyValidationService {
 
     private static final Logger logger = LoggerFactory.getLogger(ApiKeyValidationService.class);
+    private static final String CACHE_NAME = "apiKeyValidation";
 
     private final ClientRepository clientRepository;
     private final ApiKeyHashService apiKeyHashService;
+    private final CacheManager cacheManager;
 
     public ApiKeyValidationService(
             ClientRepository clientRepository,
-            ApiKeyHashService apiKeyHashService) {
+            ApiKeyHashService apiKeyHashService,
+            CacheManager cacheManager) {
         this.clientRepository = clientRepository;
         this.apiKeyHashService = apiKeyHashService;
+        this.cacheManager = cacheManager;
     }
 
     /**
@@ -54,21 +59,33 @@ public class ApiKeyValidationService {
      * Performance: ~1-5ms
      * 
      * Steps:
-     * 1. Calculate SHA-256 index for O(1) DB lookup
-     * 2. Find client by index
-     * 3. Verify hash with client's unique salt
+     * 1. Check cache first
+     * 2. Calculate SHA-256 index for O(1) DB lookup
+     * 3. Find client by index
+     * 4. Verify hash with client's unique salt
+     * 5. Cache result if valid
      * 
      * @param plainApiKey Plain text API key to validate
      * @return Optional containing the client if found and valid
      */
-    @Cacheable(
-        value = "apiKeyValidation",
-        key = "#plainApiKey",
-        unless = "#result.isEmpty()"
-    )
     public Optional<Client> validateApiKey(String plainApiKey) {
         if (plainApiKey == null || plainApiKey.isBlank()) {
             return Optional.empty();
+        }
+
+        // Check cache first
+        Cache cache = cacheManager.getCache(CACHE_NAME);
+        if (cache != null) {
+            Cache.ValueWrapper wrapper = cache.get(plainApiKey);
+            if (wrapper != null) {
+                Object cached = wrapper.get();
+                if (cached instanceof Client) {
+                    logger.debug("API key validation (cache hit)");
+                    return Optional.of((Client) cached);
+                }
+                // If cached value is null, it means the API key was previously validated as invalid
+                // We don't cache invalid keys to allow retry after key update
+            }
         }
 
         logger.debug("API key validation (cache miss)");
@@ -100,6 +117,12 @@ public class ApiKeyValidationService {
             } else {
                 logger.debug("API key validated for active client: {}", client.getId());
             }
+            
+            // Cache only valid results (store Client directly, not Optional)
+            if (cache != null) {
+                cache.put(plainApiKey, client);
+            }
+            
             return Optional.of(client);
         }
 

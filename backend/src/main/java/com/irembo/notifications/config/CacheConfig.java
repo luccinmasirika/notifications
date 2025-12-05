@@ -1,5 +1,7 @@
 package com.irembo.notifications.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,13 +61,31 @@ public class CacheConfig {
     }
 
     /**
+     * Creates a Jackson ObjectMapper configured for Redis serialization.
+     * Includes Java 8 date/time support (JSR310 module) for LocalDateTime, etc.
+     */
+    private ObjectMapper createRedisObjectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return mapper;
+    }
+
+    /**
+     * Creates a GenericJackson2JsonRedisSerializer with Java 8 date/time support.
+     */
+    private GenericJackson2JsonRedisSerializer createRedisSerializer() {
+        return new GenericJackson2JsonRedisSerializer(createRedisObjectMapper());
+    }
+
+    /**
      * Redis cache manager (recommended for production).
      * Provides distributed caching across multiple application instances.
      *
      * Configuration:
      * - TTL: 24 hours for apiKeyValidation (for 100M+ users scale)
      * - TTL: 5 minutes for other caches
-     * - Serialization: JSON (GenericJackson2JsonRedisSerializer)
+     * - Serialization: JSON (GenericJackson2JsonRedisSerializer with JSR310 support)
      * - Transaction aware: Changes are synchronized with database transactions
      * 
      * Performance optimization for 100M+ users:
@@ -74,13 +94,13 @@ public class CacheConfig {
      * - Reduces database load dramatically
      */
     private CacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
+        GenericJackson2JsonRedisSerializer serializer = createRedisSerializer();
+        
         // Default config: 5 minutes for most caches
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(5))
                 .serializeValuesWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(
-                                new GenericJackson2JsonRedisSerializer()
-                        )
+                        RedisSerializationContext.SerializationPair.fromSerializer(serializer)
                 )
                 .disableCachingNullValues();
 
@@ -89,9 +109,7 @@ public class CacheConfig {
         RedisCacheConfiguration apiKeyValidationConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofHours(24))
                 .serializeValuesWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(
-                                new GenericJackson2JsonRedisSerializer()
-                        )
+                        RedisSerializationContext.SerializationPair.fromSerializer(serializer)
                 )
                 .disableCachingNullValues();
 

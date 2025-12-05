@@ -16,6 +16,9 @@
 -- - All existing clients will get a salt generated
 -- - All clients will use SHA-256 validation (BCrypt no longer supported)
 
+-- Enable pgcrypto extension for gen_random_bytes()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Add client_salt column (unique salt per client)
 ALTER TABLE client ADD COLUMN client_salt VARCHAR(64);
 
