@@ -52,13 +52,55 @@ services:
     networks:
       - notifications-network
 
-  backend:
+  # Reverse Proxy / Load Balancer - Traefik
+  traefik:
+    image: traefik:v2.10
+    container_name: notifications-traefik
+    command:
+      # API & Dashboard
+      - "--api.insecure=true" # Active le Dashboard (non sécurisé, OK pour dev)
+      - "--api.dashboard=true"
+      
+      # Docker Provider
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=notifications-network"
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      
+      # Entrypoints
+      - "--entrypoints.web.address=:80"
+      
+      # Logging
+      - "--accesslog=true"
+      - "--accesslog.format=json" # Format JSON pour parsing facile
+      - "--log.level=INFO"
+      
+      # Metrics (Prometheus)
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.addEntryPointsLabels=true"
+      - "--metrics.prometheus.addServicesLabels=true"
+      
+      # Performance & Timeouts
+      - "--entrypoints.web.transport.respondingTimeouts.readTimeout=30s" # Timeout lecture réponse backend
+      - "--entrypoints.web.transport.respondingTimeouts.writeTimeout=30s" # Timeout écriture réponse
+      - "--entrypoints.web.transport.respondingTimeouts.idleTimeout=90s" # Timeout connexion idle
+      
+      # Global HTTP Options
+      - "--serversTransport.maxIdleConnsPerHost=10" # Connection pooling
+    ports:
+      - "1310:80"    # API Gateway (même port qu'avant pour compatibilité)
+      - "8080:8080"  # Dashboard Traefik + Métriques Prometheus sur /metrics
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - notifications-network
+
+  # Instance 1 du Backend
+  backend-1:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: notifications-backend
-    ports:
-      - "1310:1310"
+    container_name: notifications-backend-1
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notifications
       SPRING_DATASOURCE_USERNAME: postgres
@@ -72,10 +114,7 @@ services:
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: admin123
       CORS_ALLOWED_ORIGINS: "http://localhost,http://localhost:1015,http://localhost:4200,http://localhost:8080"
-      # CRITICAL: Set APP_CRYPTO_MASTER_KEY for production
-      # Generate using: ./scripts/generate-master-key.sh
-      # For development, leave empty (auto-generated, NOT SECURE)
-      APP_CRYPTO_MASTER_KEY: ${APP_CRYPTO_MASTER_KEY:-}
+      APP_CRYPTO_MASTER_KEY: ${APP_CRYPTO_MASTER_KEY:-uo0mWscOs31YO4l7nxkswP6bvKghQr01jTyL+VrwwjA=}
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,6 +128,155 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      
+      # Routing Rules
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/actuator`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend-service.loadbalancer.server.port=1310"
+      
+      # Health Checks (Retire automatiquement les instances down)
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.path=/actuator/health"
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.interval=10s"
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.scheme=http"
+      
+      # Middlewares Definitions (Définis une seule fois, utilisés par les deux backends)
+      # Circuit Breaker (Protection contre cascades de défaillances - ouvre si >30% erreurs réseau ou >25% 5xx)
+      - "traefik.http.middlewares.circuit-breaker.circuitbreaker.expression=NetworkErrorRatio() > 0.30 || ResponseCodeRatio(500, 600, 0, 600) > 0.25"
+      
+      # Retry Logic (Retry automatique 3x sur erreurs 5xx ou timeouts réseau)
+      - "traefik.http.middlewares.retry.retry.attempts=3"
+      - "traefik.http.middlewares.retry.retry.initialInterval=100ms"
+      
+      # Compression (Réduire bande passante pour réponses JSON grandes)
+      - "traefik.http.middlewares.compress.compress=true"
+      
+      # CORS Headers (Important pour permettre les requêtes cross-origin depuis le frontend)
+      - "traefik.http.middlewares.cors.headers.accessControlAllowMethods=GET,POST,PUT,DELETE,OPTIONS"
+      - "traefik.http.middlewares.cors.headers.accessControlAllowOriginList=http://localhost:1015,http://localhost:4200,http://localhost:8080"
+      - "traefik.http.middlewares.cors.headers.accessControlAllowHeaders=Content-Type,Authorization,X-API-KEY,X-SIGNATURE,X-TIMESTAMP,Accept,Origin"
+      - "traefik.http.middlewares.cors.headers.accessControlAllowCredentials=true"
+      - "traefik.http.middlewares.cors.headers.accessControlExposeHeaders=X-RateLimit-Limit,X-RateLimit-Remaining,X-RateLimit-Reset,X-Soft-Throttled,Retry-After"
+      - "traefik.http.middlewares.cors.headers.accessControlMaxAge=3600"
+      
+      # Security Headers (Protection XSS, Clickjacking, etc.)
+      - "traefik.http.middlewares.security-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.security-headers.headers.sslRedirect=false" # HTTP OK en dev
+      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.security-headers.headers.forceSTSHeader=false" # HTTPS pas encore configuré
+      
+      # Apply Middlewares (Ordre: CORS → security → compress → retry → circuit-breaker)
+      # CORS doit être en premier pour gérer les requêtes OPTIONS preflight
+      - "traefik.http.routers.backend.middlewares=cors@docker,security-headers@docker,compress@docker,retry@docker,circuit-breaker@docker"
+    networks:
+      - notifications-network
+
+  # Instance 2 du Backend (Load balanced automatiquement par Traefik)
+  backend-2:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: notifications-backend-2
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notifications
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+      CORS_ALLOWED_ORIGINS: "http://localhost,http://localhost:1015,http://localhost:4200,http://localhost:8080"
+      APP_CRYPTO_MASTER_KEY: ${APP_CRYPTO_MASTER_KEY:-uo0mWscOs31YO4l7nxkswP6bvKghQr01jTyL+VrwwjA=}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:1310/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      
+      # Routing Rules (Même règle = même routeur = Load Balancing automatique)
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/actuator`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend-service.loadbalancer.server.port=1310"
+      
+      # Health Checks (Même config que backend-1, partagé via service name)
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.path=/actuator/health"
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.interval=10s"
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.scheme=http"
+      
+      # Middlewares (Même chaîne que backend-1 - middlewares définis dans backend-1)
+      # CORS doit être en premier pour gérer les requêtes OPTIONS preflight
+      - "traefik.http.routers.backend.middlewares=cors@docker,security-headers@docker,compress@docker,retry@docker,circuit-breaker@docker"
+    networks:
+      - notifications-network
+
+  # Instance 3 du Backend (Ajouté pour tester le scaling horizontal)
+  backend-3:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: notifications-backend-3
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notifications
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+      CORS_ALLOWED_ORIGINS: "http://localhost,http://localhost:1015,http://localhost:4200,http://localhost:8080"
+      APP_CRYPTO_MASTER_KEY: ${APP_CRYPTO_MASTER_KEY:-uo0mWscOs31YO4l7nxkswP6bvKghQr01jTyL+VrwwjA=}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:1310/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      
+      # Routing Rules (Même règle = même routeur = Load Balancing automatique avec les autres backends)
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/actuator`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend-service.loadbalancer.server.port=1310"
+      
+      # Health Checks (Même config que les autres backends, partagé via service name)
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.path=/actuator/health"
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.interval=10s"
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.timeout=3s"
+      - "traefik.http.services.backend-service.loadbalancer.healthcheck.scheme=http"
+      
+      # Middlewares (Même chaîne que les autres backends - middlewares définis dans backend-1)
+      # CORS doit être en premier pour gérer les requêtes OPTIONS preflight
+      - "traefik.http.routers.backend.middlewares=cors@docker,security-headers@docker,compress@docker,retry@docker,circuit-breaker@docker"
     networks:
       - notifications-network
 
@@ -100,12 +288,9 @@ services:
     ports:
       - "1015:80"
     environment:
-      # API_URL: Base URL of the backend API (accessible from the browser)
-      # The script will automatically append /admin and /api/notifications
       API_URL: http://localhost:1310
     depends_on:
-      backend:
-        condition: service_healthy
+      - traefik
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:1015/health || exit 1"]
       interval: 30s

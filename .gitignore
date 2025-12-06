@@ -70,13 +70,13 @@ notifications_redis_data/
 ################################################################################
 # Node / Angular
 ################################################################################
-admin-ui/node_modules/
-admin-ui/dist/
-admin-ui/.angular/
-admin-ui/.env
-admin-ui/npm-debug.log
-admin-ui/yarn-debug.log
-admin-ui/yarn-error.log
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.env
+frontend/npm-debug.log
+frontend/yarn-debug.log
+frontend/yarn-error.log
 *.tsbuildinfo
 
 ################################################################################
