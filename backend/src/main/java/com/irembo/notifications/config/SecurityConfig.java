@@ -41,7 +41,7 @@ public class SecurityConfig {
      * Format: comma-separated list of origins (e.g., "http://localhost:80,https://example.com")
      * Default: localhost origins for development
      */
-    @Value("${cors.allowed-origins:http://localhost,http://localhost:80,http://localhost:4200,http://localhost:8080}")
+    @Value("${cors.allowed-origins:http://localhost,http://localhost:80,http://localhost:4200,http://localhost:8080,http://localhost:1310,http://localhost:1015}")
     private String allowedOrigins;
 
     @Bean

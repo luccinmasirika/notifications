@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "notifications-admin-ui": {
+    "notifications-frontend": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -17,7 +17,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/notifications-admin-ui",
+            "outputPath": "dist/notifications-frontend",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
@@ -61,10 +61,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "notifications-admin-ui:build:production"
+              "buildTarget": "notifications-frontend:build:production"
             },
             "development": {
-              "buildTarget": "notifications-admin-ui:build:development"
+              "buildTarget": "notifications-frontend:build:development"
             }
           },
           "defaultConfiguration": "development"

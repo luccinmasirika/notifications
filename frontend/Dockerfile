@@ -26,7 +26,7 @@ COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Copy built application from builder stage
-COPY --from=builder /app/dist/notifications-admin-ui/browser /usr/share/nginx/html
+COPY --from=builder /app/dist/notifications-frontend/browser /usr/share/nginx/html
 
 # Ensure assets directory exists for config.json
 RUN mkdir -p /usr/share/nginx/html/assets

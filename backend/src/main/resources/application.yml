@@ -159,7 +159,7 @@ app:
         name: ${APP_OPENAPI_INFO_LICENSE_NAME:MIT License}
         url: ${APP_OPENAPI_INFO_LICENSE_URL:https://opensource.org/licenses/MIT}
     server:
-      url: ${APP_OPENAPI_SERVER_URL:http://localhost:8080}
+      url: ${APP_OPENAPI_SERVER_URL:http://localhost:1310}
       description: ${APP_OPENAPI_SERVER_DESCRIPTION:Development server}
 
 # CORS Configuration

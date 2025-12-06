@@ -36,7 +36,7 @@ public class OpenApiConfig {
     @Value("${app.openapi.info.license.url:https://opensource.org/licenses/MIT}")
     private String licenseUrl;
 
-    @Value("${app.openapi.server.url:http://localhost:8080}")
+    @Value("${app.openapi.server.url:http://localhost:1310}")
     private String serverUrl;
 
     @Value("${app.openapi.server.description:Development server}")
