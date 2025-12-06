@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders, HttpResponse, HttpErrorResponse } from '@angul
 import { Observable } from 'rxjs';
 import { NotificationRequest, NotificationResponse, RateLimitHeaders } from '../models/notification.model';
 import { ConfigService } from './config.service';
+import { HmacService } from './hmac.service';
 
 export interface TestResponseData {
   requestNumber: number;
@@ -24,21 +25,40 @@ export class ClientTesterService {
 
   constructor(
     private http: HttpClient,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private hmacService: HmacService
   ) {
     this.configService.getConfig().subscribe(config => {
       this.apiUrl = config.notificationApiUrl;
     });
   }
 
-  sendNotification(
+  async sendNotification(
     apiKey: string,
+    apiSecret: string,
     request: NotificationRequest
-  ): Observable<HttpResponse<NotificationResponse>> {
+  ): Promise<Observable<HttpResponse<NotificationResponse>>> {
+    const timestamp = this.hmacService.getCurrentTimestamp();
+    const method = 'POST';
+    const path = '/api/notifications';
+    const body = JSON.stringify(request);
+
+    // Generate HMAC signature
+    const signature = await this.hmacService.generateSignatureAsync(
+      apiSecret,
+      timestamp,
+      method,
+      path,
+      body
+    );
+
     const headers = new HttpHeaders({
       'X-API-KEY': apiKey,
+      'X-TIMESTAMP': timestamp.toString(),
+      'X-SIGNATURE': signature,
       'Content-Type': 'application/json'
     });
+
     return this.http.post<NotificationResponse>(
       this.apiUrl,
       request,

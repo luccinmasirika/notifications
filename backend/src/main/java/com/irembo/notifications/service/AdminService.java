@@ -31,6 +31,8 @@ public class AdminService {
     private final RedisCounterRepository redisCounter;
     private final ApiKeyHashService apiKeyHashService;
     private final ApiKeyValidationService apiKeyValidationService;
+    private final CryptoService cryptoService;
+    private final ApiKeyGeneratorService apiKeyGeneratorService;
 
     public AdminService(
             ClientRepository clientRepository,
@@ -38,13 +40,17 @@ public class AdminService {
             CacheManager cacheManager,
             RedisCounterRepository redisCounter,
             ApiKeyHashService apiKeyHashService,
-            ApiKeyValidationService apiKeyValidationService) {
+            ApiKeyValidationService apiKeyValidationService,
+            CryptoService cryptoService,
+            ApiKeyGeneratorService apiKeyGeneratorService) {
         this.clientRepository = clientRepository;
         this.clientLimitRepository = clientLimitRepository;
         this.cacheManager = cacheManager;
         this.redisCounter = redisCounter;
         this.apiKeyHashService = apiKeyHashService;
         this.apiKeyValidationService = apiKeyValidationService;
+        this.cryptoService = cryptoService;
+        this.apiKeyGeneratorService = apiKeyGeneratorService;
     }
 
     /**
@@ -334,9 +340,19 @@ public class AdminService {
      * @param active Is client active
      * @return Created client
      */
+    /**
+     * Create a client with HMAC authentication (default method).
+     * All new clients are created with HMAC authentication enabled.
+     * 
+     * @param apiKey API Key (public identifier)
+     * @param name Client name
+     * @param priority Priority level
+     * @param active Active status
+     * @return Array with [Client, plainApiSecret] - secret should be shown once to user
+     */
     @Transactional
     @CacheEvict(value = {"clientConfigs", "apiKeyValidation"}, allEntries = true)
-    public Client createClient(String apiKey, String name, Integer priority, Boolean active) {
+    public Object[] createClient(String apiKey, String name, Integer priority, Boolean active) {
         // Hash API key with SHA-256 + unique salt
         String[] hashAndSalt = apiKeyValidationService.hashApiKeyForStorage(apiKey, null);
         String hashedKey = hashAndSalt[0]; // SHA-256(apiKey + clientSalt)
@@ -350,15 +366,21 @@ public class AdminService {
         client.setName(name);
         client.setPriority(priority != null ? priority : 0);
         client.setActive(active != null ? active : true);
+        client.setAuthMethod("HMAC");
+        client.setStatus("ACTIVE");
 
         Client saved = clientRepository.save(client);
-        logger.info("Created client {} with SHA-256 validation (ID: {})", name, saved.getId());
+        
+        // Generate and assign API secret (HMAC required)
+        String apiSecret = generateApiSecret(saved.getId());
+        
+        logger.info("Created client {} with HMAC authentication (ID: {})", name, saved.getId());
 
         // Create default rate limits for the new client
         createDefaultClientLimits(saved.getId());
         logger.info("Created default rate limits for client {} (ID: {})", name, saved.getId());
 
-        return saved;
+        return new Object[]{saved, apiSecret};
     }
 
     /**
@@ -412,5 +434,121 @@ public class AdminService {
 
         // Use SHA-256 validation with unique client salt
         return apiKeyValidationService.validateApiKey(plainApiKey);
+    }
+
+    /**
+     * Generate and assign an API secret for a client.
+     * HMAC authentication is required for all clients.
+     * 
+     * @param clientId Client ID
+     * @return Plain text API secret (should be shown to user once, then stored securely)
+     */
+    @Transactional
+    @CacheEvict(value = {"apiKeyValidation", "clientConfigs"}, allEntries = true)
+    public String generateApiSecret(Long clientId) {
+        Optional<Client> clientOpt = clientRepository.findById(clientId);
+        if (clientOpt.isEmpty()) {
+            throw new IllegalArgumentException("Client not found: " + clientId);
+        }
+
+        Client client = clientOpt.get();
+        
+        // Generate secure API secret (64 bytes = 512 bits of entropy)
+        String apiSecret = generateSecureApiSecret();
+        
+        // Encrypt and store secret
+        String encryptedSecret = cryptoService.encrypt(apiSecret);
+        
+        // Update client (HMAC is required)
+        client.setApiSecretEncrypted(encryptedSecret);
+        client.setAuthMethod("HMAC");
+        client.setStatus("ACTIVE");
+        
+        clientRepository.save(client);
+        evictClientCache(client.getApiKeyHash());
+        
+        logger.info("Generated API secret for client {} (ID: {})", 
+                client.getName(), clientId);
+        
+        return apiSecret; // Return plain text secret (show once to user)
+    }
+
+    /**
+     * Rotate (regenerate) API secret for a client.
+     * 
+     * @param clientId Client ID
+     * @return New plain text API secret
+     */
+    @Transactional
+    @CacheEvict(value = {"apiKeyValidation", "clientConfigs"}, allEntries = true)
+    public String rotateApiSecret(Long clientId) {
+        Optional<Client> clientOpt = clientRepository.findById(clientId);
+        if (clientOpt.isEmpty()) {
+            throw new IllegalArgumentException("Client not found: " + clientId);
+        }
+
+        Client client = clientOpt.get();
+        
+        // All clients use HMAC - verify secret exists
+        if (client.getApiSecretEncrypted() == null || client.getApiSecretEncrypted().isBlank()) {
+            logger.warn("Client {} (ID: {}) has no API secret - generating new one", 
+                    client.getName(), clientId);
+        }
+        
+        // Generate new secret
+        String newApiSecret = generateApiSecret(clientId);
+        
+        logger.info("Rotated API secret for client {} (ID: {})", client.getName(), clientId);
+        
+        return newApiSecret;
+    }
+
+
+    /**
+     * Update client status (ACTIVE, SUSPENDED, REVOKED).
+     * 
+     * @param clientId Client ID
+     * @param status New status
+     */
+    @Transactional
+    @CacheEvict(value = {"apiKeyValidation", "clientConfigs"}, allEntries = true)
+    public void updateClientStatus(Long clientId, String status) {
+        if (!"ACTIVE".equals(status) && !"SUSPENDED".equals(status) && !"REVOKED".equals(status)) {
+            throw new IllegalArgumentException("Invalid status: " + status + ". Must be ACTIVE, SUSPENDED, or REVOKED");
+        }
+
+        Optional<Client> clientOpt = clientRepository.findById(clientId);
+        if (clientOpt.isEmpty()) {
+            throw new IllegalArgumentException("Client not found: " + clientId);
+        }
+
+        Client client = clientOpt.get();
+        client.setStatus(status);
+        
+        // Also update active flag for backward compatibility
+        client.setActive("ACTIVE".equals(status));
+        
+        clientRepository.save(client);
+        evictClientCache(client.getApiKeyHash());
+        
+        logger.info("Updated status for client {} (ID: {}) to {}", 
+                client.getName(), clientId, status);
+    }
+
+
+    /**
+     * Generate a cryptographically secure API secret.
+     * Format: 64 bytes (512 bits) of random data, base64url-encoded.
+     * 
+     * @return Secure API secret
+     */
+    private String generateSecureApiSecret() {
+        byte[] randomBytes = new byte[64]; // 512 bits of entropy
+        java.security.SecureRandom secureRandom = new java.security.SecureRandom();
+        secureRandom.nextBytes(randomBytes);
+        
+        return java.util.Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(randomBytes);
     }
 }

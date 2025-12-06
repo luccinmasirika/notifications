@@ -41,7 +41,124 @@
           </span>
         </div>
           </div>
-    </div>
+          <div class="info-item">
+            <label class="info-label">Account Status</label>
+            <div class="info-value">
+              <mat-chip [color]="getStatusColor(details.client.status)">
+                {{ getStatusLabel(details.client.status) }}
+              </mat-chip>
+            </div>
+          </div>
+          <div class="info-item">
+            <label class="info-label">Auth Method</label>
+            <div class="info-value">
+              <span class="auth-method-badge" [class.hmac]="details.client.authMethod === 'HMAC'">
+                {{ getAuthMethodLabel(details.client.authMethod) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- API Credentials Section -->
+        <div class="credentials-section">
+          <h3 class="section-title">
+            <mat-icon>vpn_key</mat-icon>
+            API Credentials
+          </h3>
+          
+          <!-- New Credentials from Creation -->
+          <div class="new-credentials-section" *ngIf="newCredentials">
+            <div class="credentials-warning">
+              <mat-icon>warning</mat-icon>
+              <span>⚠️ IMPORTANT: Save both API Key and Secret now. They will not be shown again.</span>
+            </div>
+            
+            <div class="credentials-grid">
+              <div class="credential-field">
+                <label class="credential-label">API Key</label>
+                <div class="credential-display">
+                  <span class="credential-value">{{ newCredentials.apiKey }}</span>
+                  <button mat-icon-button (click)="copyToClipboard(newCredentials.apiKey, 'API Key')" matTooltip="Copy API Key">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                </div>
+              </div>
+
+              <div class="credential-field" *ngIf="newCredentials.apiSecret">
+                <label class="credential-label">API Secret</label>
+                <div class="credential-display">
+                  <span class="credential-value">{{ newCredentials.apiSecret }}</span>
+                  <button mat-icon-button (click)="copyToClipboard(newCredentials.apiSecret, 'API Secret')" matTooltip="Copy Secret">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                  <button mat-icon-button (click)="newCredentials = null" matTooltip="Hide Secret">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Existing Credentials Management -->
+          <div class="existing-credentials-section" *ngIf="!newCredentials">
+            <div class="credentials-grid">
+              <div class="credential-field">
+                <label class="credential-label">API Key</label>
+                <div class="credential-display">
+                  <span class="credential-value placeholder">{{ 'Not available (stored securely)' }}</span>
+                </div>
+              </div>
+
+              <div class="credential-field">
+                <label class="credential-label">API Secret</label>
+                <div class="credential-display">
+                  <span class="credential-value" *ngIf="rotatedSecret">{{ rotatedSecret }}</span>
+                  <span class="credential-value placeholder" *ngIf="!rotatedSecret">••••••••••••••••</span>
+                  <button mat-icon-button *ngIf="rotatedSecret" (click)="copyToClipboard(rotatedSecret, 'API Secret')" matTooltip="Copy Secret">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                  <button mat-icon-button *ngIf="rotatedSecret" (click)="onCloseRotatedSecret()" matTooltip="Hide Secret">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+                <div class="credential-actions">
+                  <button mat-raised-button color="accent" (click)="onRotateSecret()" [disabled]="loading" matTooltip="Generate a new API Secret">
+                    <mat-icon>refresh</mat-icon>
+                    {{ rotatedSecret ? 'Rotate Secret' : 'Generate Secret' }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Warning when secret is displayed -->
+            <div class="credentials-warning" *ngIf="rotatedSecret">
+              <mat-icon>warning</mat-icon>
+              <span>⚠️ IMPORTANT: Save this secret now. The old secret is no longer valid and this will not be shown again.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account Status Actions -->
+        <div class="status-section">
+          <h3 class="section-title">
+            <mat-icon>settings</mat-icon>
+            Account Status
+          </h3>
+          <div class="status-buttons">
+            <button mat-button [color]="details.client.status === 'ACTIVE' ? 'primary' : ''" 
+                    (click)="onUpdateStatus('ACTIVE')" [disabled]="loading || details.client.status === 'ACTIVE'">
+              Active
+            </button>
+            <button mat-button [color]="details.client.status === 'SUSPENDED' ? 'warn' : ''" 
+                    (click)="onUpdateStatus('SUSPENDED')" [disabled]="loading || details.client.status === 'SUSPENDED'">
+              Suspend
+            </button>
+            <button mat-button [color]="details.client.status === 'REVOKED' ? 'warn' : ''" 
+                    (click)="onUpdateStatus('REVOKED')" [disabled]="loading || details.client.status === 'REVOKED'">
+              Revoke
+            </button>
+          </div>
+        </div>
       </mat-card-content>
     </mat-card>
 
@@ -81,7 +198,7 @@
               <mat-icon>edit</mat-icon>
               Edit
             </button>
-    </div>
+          </div>
         </mat-card-header>
         <mat-card-content>
           <div class="limits-grid">

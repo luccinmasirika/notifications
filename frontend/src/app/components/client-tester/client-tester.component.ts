@@ -15,6 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { ClientTesterService, TestResponseData } from '../../services/client-tester.service';
+import { HmacService } from '../../services/hmac.service';
 import { NotificationRequest } from '../../models/notification.model';
 
 @Component({
@@ -55,11 +56,13 @@ export class ClientTesterComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private testerService: ClientTesterService,
+    private hmacService: HmacService,
     private cdr: ChangeDetectorRef,
     private route: ActivatedRoute
   ) {
     this.testForm = this.fb.group({
       apiKey: ['', [Validators.required]],
+      apiSecret: ['', [Validators.required]],
       channel: ['SMS', [Validators.required]],
       destination: ['', [Validators.required]],
       message: ['', [Validators.required]],
@@ -71,20 +74,91 @@ export class ClientTesterComponent implements OnInit, OnDestroy {
     console.log('ClientTesterComponent initialized');
     this.route.queryParams.subscribe(params => {
       const apiKey = params['apiKey'];
+      const apiSecret = params['apiSecret'];
+      
       if (apiKey) {
         this.testForm.patchValue({
           apiKey: apiKey,
+          apiSecret: apiSecret || '',
           destination: '+250700000001',
           message: 'Test notification message'
         });
       } else {
-    this.testForm.patchValue({
-      apiKey: 'test-api-key-123',
-      destination: '+250700000001',
-      message: 'Test notification message'
+        this.testForm.patchValue({
+          apiKey: 'test-api-key-123',
+          apiSecret: '',
+          destination: '+250700000001',
+          message: 'Test notification message'
         });
       }
+      
+      // Generate default signature if API secret is provided
+      if (apiSecret) {
+        setTimeout(() => this.generateDefaultSignature(), 100);
+      }
     });
+    
+    // Watch for API secret changes to generate default signature
+    this.testForm.get('apiSecret')?.valueChanges.subscribe(apiSecret => {
+      if (apiSecret) {
+        this.generateDefaultSignature();
+      }
+    });
+    
+    // Also watch for changes to channel, destination, message to regenerate signature
+    this.testForm.get('channel')?.valueChanges.subscribe(() => {
+      if (this.testForm.get('apiSecret')?.value) {
+        this.generateDefaultSignature();
+      }
+    });
+    this.testForm.get('destination')?.valueChanges.subscribe(() => {
+      if (this.testForm.get('apiSecret')?.value) {
+        this.generateDefaultSignature();
+      }
+    });
+    this.testForm.get('message')?.valueChanges.subscribe(() => {
+      if (this.testForm.get('apiSecret')?.value) {
+        this.generateDefaultSignature();
+      }
+    });
+  }
+
+  /**
+   * Generate a default signature for testing purposes.
+   * This creates a signature for a sample POST request to /api/notifications.
+   */
+  async generateDefaultSignature(): Promise<void> {
+    const apiSecret = this.testForm.get('apiSecret')?.value;
+    if (!apiSecret) {
+      return;
+    }
+
+    try {
+      const timestamp = this.hmacService.getCurrentTimestamp();
+      const method = 'POST';
+      const path = '/api/notifications';
+      const body = JSON.stringify({
+        channel: this.testForm.get('channel')?.value || 'SMS',
+        to: this.testForm.get('destination')?.value || '',
+        message: this.testForm.get('message')?.value || ''
+      });
+
+      const signature = await this.hmacService.generateSignatureAsync(
+        apiSecret,
+        timestamp,
+        method,
+        path,
+        body
+      );
+
+      console.log('Default signature generated:', {
+        timestamp,
+        signature: signature.substring(0, 20) + '...',
+        payload: `${timestamp}\n${method}\n${path}\n${body}`
+      });
+    } catch (error) {
+      console.error('Error generating default signature:', error);
+    }
   }
   ngOnDestroy(): void {
     this.stop();
@@ -123,7 +197,7 @@ export class ClientTesterComponent implements OnInit, OnDestroy {
           return;
         }
         requestNumber++;
-        this.sendRequest(requestNumber, formValue.apiKey, request);
+        this.sendRequestAsync(requestNumber, formValue.apiKey, formValue.apiSecret, request);
       });
   }
   stop(): void {
@@ -134,12 +208,15 @@ export class ClientTesterComponent implements OnInit, OnDestroy {
     this.isRunning = false;
     this.destroy$.next();
   }
-  private sendRequest(
+  private async sendRequestAsync(
     requestNumber: number,
     apiKey: string,
+    apiSecret: string,
     request: NotificationRequest
-  ): void {
-    this.testerService.sendNotification(apiKey, request).subscribe({
+  ): Promise<void> {
+    try {
+      const observable = await this.testerService.sendNotification(apiKey, apiSecret, request);
+      observable.subscribe({
       next: (response) => {
         this.totalSent++;
         const status = response.status;
@@ -228,7 +305,17 @@ export class ClientTesterComponent implements OnInit, OnDestroy {
         };
         this.addResponse(testResponse);
       }
-    });
+      });
+    } catch (error) {
+      console.error('Error sending request:', error);
+      this.totalSent++;
+      const testResponse: TestResponseData = {
+        requestNumber,
+        httpStatus: 0,
+        timestamp: new Date()
+      };
+      this.addResponse(testResponse);
+    }
   }
   private addResponse(response: TestResponseData): void {
     this.responses.unshift(response);

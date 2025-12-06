@@ -24,6 +24,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -37,6 +39,8 @@ import java.util.Optional;
 @RequestMapping("/admin")
 @Validated
 public class AdminController {
+
+    private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
 
     private final ClientRepository clientRepository;
     private final ClientLimitRepository clientLimitRepository;
@@ -185,14 +189,24 @@ public class AdminController {
             apiKey = apiKeyGeneratorService.generateUniqueApiKey();
         }
         
-        Client saved = adminService.createClient(
+        // Create client with HMAC authentication (returns [Client, apiSecret])
+        Object[] result = adminService.createClient(
             apiKey,
             request.name(),
             request.priority(),
             request.active()
         );
-        // Return API key in response - this is the ONLY time it will be visible
-        ClientResponse response = ClientResponse.withApiKey(saved, apiKey);
+        
+        Client saved = (Client) result[0];
+        String apiSecret = (String) result[1];
+        
+        // Return API key and secret in response - this is the ONLY time they will be visible
+        ClientResponse response = ClientResponse.withApiKeyAndSecret(saved, apiKey, apiSecret);
+        
+        // Log for debugging (DO NOT log the actual secret in production)
+        logger.info("Created client {} (ID: {}) with API key and secret. Secret length: {}", 
+                saved.getName(), saved.getId(), apiSecret != null ? apiSecret.length() : 0);
+        
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -406,5 +420,104 @@ public class AdminController {
         );
 
         return ResponseEntity.ok(status);
+    }
+
+    /**
+     * Generate API secret for a client (enables HMAC authentication).
+     * 
+     * @param id Client ID
+     * @return Plain text API secret (shown once to user)
+     */
+    @PostMapping("/clients/{id}/generate-secret")
+    public ResponseEntity<Map<String, Object>> generateApiSecret(@PathVariable @Min(1) Long id) {
+        try {
+            String apiSecret = adminService.generateApiSecret(id);
+            Optional<Client> clientOpt = clientRepository.findById(id);
+            
+            return ResponseEntity.ok(Map.of(
+                    "clientId", id,
+                    "apiSecret", apiSecret,
+                    "message", "API secret generated successfully. Store it securely - it will not be shown again.",
+                    "warning", "⚠️ IMPORTANT: Copy this secret now. It will not be displayed again."
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage(), "clientId", id));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to generate API secret: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Rotate (regenerate) API secret for a client.
+     * 
+     * @param id Client ID
+     * @return New plain text API secret
+     */
+    @PostMapping("/clients/{id}/rotate-secret")
+    public ResponseEntity<Map<String, Object>> rotateApiSecret(@PathVariable @Min(1) Long id) {
+        try {
+            String newApiSecret = adminService.rotateApiSecret(id);
+            Optional<Client> clientOpt = clientRepository.findById(id);
+            
+            return ResponseEntity.ok(Map.of(
+                    "clientId", id,
+                    "apiSecret", newApiSecret,
+                    "message", "API secret rotated successfully. Update your client applications with the new secret.",
+                    "warning", "⚠️ IMPORTANT: Copy this secret now. The old secret is no longer valid."
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage(), "clientId", id));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", e.getMessage(), "clientId", id));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to rotate API secret: " + e.getMessage()));
+        }
+    }
+
+
+    /**
+     * Update client status (ACTIVE, SUSPENDED, REVOKED).
+     * 
+     * @param id Client ID
+     * @param request Status update request
+     * @return Updated client
+     */
+    @PutMapping("/clients/{id}/status")
+    public ResponseEntity<?> updateClientStatus(
+            @PathVariable @Min(1) Long id,
+            @Valid @RequestBody Map<String, String> request) {
+        
+        String status = request.get("status");
+        if (status == null || status.isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Status is required"));
+        }
+        
+        if (!status.equals("ACTIVE") && !status.equals("SUSPENDED") && !status.equals("REVOKED")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Invalid status. Must be ACTIVE, SUSPENDED, or REVOKED"));
+        }
+        
+        try {
+            adminService.updateClientStatus(id, status);
+            Optional<Client> clientOpt = clientRepository.findById(id);
+            if (clientOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Client not found", "clientId", id));
+            }
+            
+            return ResponseEntity.ok(ClientDto.fromClient(clientOpt.get()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage(), "clientId", id));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to update client status: " + e.getMessage()));
+        }
     }
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Client, ClientLimit, CreateClientRequest, UpdateClientRequest, ClientLimitRequest, ClientDetailsResponse, ClientResponse, SystemLimit, SystemLimitRequest } from '../models/client.model';
+import { Client, ClientLimit, CreateClientRequest, UpdateClientRequest, ClientLimitRequest, ClientDetailsResponse, ClientResponse, SystemLimit, SystemLimitRequest, ApiSecretResponse } from '../models/client.model';
 import { AuthService } from './auth.service';
 import { ConfigService } from './config.service';
 
@@ -85,6 +85,31 @@ export class AdminService {
   generateApiKey(): Observable<{apiKey: string, message: string, timestamp: string}> {
     return this.http.get<{apiKey: string, message: string, timestamp: string}>(
       `${this.apiUrl}/generate-api-key`,
+      { headers: this.getHeaders() }
+    );
+  }
+
+  generateApiSecret(clientId: number): Observable<ApiSecretResponse> {
+    return this.http.post<ApiSecretResponse>(
+      `${this.apiUrl}/clients/${clientId}/generate-secret`,
+      {},
+      { headers: this.getHeaders() }
+    );
+  }
+
+  rotateApiSecret(clientId: number): Observable<ApiSecretResponse> {
+    return this.http.post<ApiSecretResponse>(
+      `${this.apiUrl}/clients/${clientId}/rotate-secret`,
+      {},
+      { headers: this.getHeaders() }
+    );
+  }
+
+
+  updateClientStatus(clientId: number, status: 'ACTIVE' | 'SUSPENDED' | 'REVOKED'): Observable<Client> {
+    return this.http.put<Client>(
+      `${this.apiUrl}/clients/${clientId}/status`,
+      { status },
       { headers: this.getHeaders() }
     );
   }

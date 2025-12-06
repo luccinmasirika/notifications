@@ -40,8 +40,8 @@ export class ClientFormComponent implements OnInit {
   loading = false;
   loadingClient = false;
   clientId: number | null = null;
-  generatedApiKey: string | null = null; // API key générée après création
-  showApiKey = false; // Afficher l'API key sur la page
+  createdCredentials: { apiKey: string; apiSecret: string | null } | null = null; // Credentials après création
+  showCredentials = false; // Afficher les credentials sur la page
   constructor(
     private fb: FormBuilder,
     private adminService: AdminService,
@@ -113,11 +113,12 @@ export class ClientFormComponent implements OnInit {
           next: (response: ClientResponse) => {
             if (response.apiKey) {
               // API key was updated - display on page
-              this.generatedApiKey = response.apiKey;
-              this.showApiKey = true;
+              this.createdCredentials = {
+                apiKey: response.apiKey,
+                apiSecret: null // Secret not returned on update
+              };
+              this.showCredentials = true;
               this.loading = false;
-              // Auto-copy to clipboard
-              this.copyToClipboard(response.apiKey);
             } else {
               // No API key change
               this.snackBar.open(this.translate.instant('client.clientUpdated'), this.translate.instant('common.close'), { duration: 3000 });
@@ -141,13 +142,29 @@ export class ClientFormComponent implements OnInit {
         };
         this.adminService.createClient(createRequest).subscribe({
           next: (response: ClientResponse) => {
-            // Display API key directly on page
+            // Display API key and secret directly on page
             if (response.apiKey) {
-              this.generatedApiKey = response.apiKey;
-              this.showApiKey = true;
+              const apiSecret = response.apiSecret || null;
+              this.createdCredentials = {
+                apiKey: response.apiKey,
+                apiSecret: apiSecret
+              };
+              this.showCredentials = true;
               this.loading = false;
-              // Auto-copy to clipboard
-              this.copyToClipboard(response.apiKey);
+              
+              if (apiSecret) {
+                this.snackBar.open(
+                  this.getTranslation('client.clientCreatedWithCredentials', 'Client created. Save both API Key and Secret below.'),
+                  this.getTranslation('common.close', 'Close'),
+                  { duration: 5000 }
+                );
+              } else {
+                this.snackBar.open(
+                  this.getTranslation('client.clientCreated', 'Client created successfully'),
+                  this.getTranslation('common.close', 'Close'),
+                  { duration: 3000 }
+                );
+              }
             } else {
               this.snackBar.open(this.translate.instant('client.clientCreated'), this.translate.instant('common.close'), { duration: 3000 });
               this.router.navigate(['/admin']);
@@ -214,10 +231,13 @@ export class ClientFormComponent implements OnInit {
     return translation !== key ? translation : defaultValue;
   }
 
-  copyToClipboard(text: string): void {
+  copyToClipboard(text: string, label?: string): void {
     navigator.clipboard.writeText(text).then(() => {
+      const message = label 
+        ? `${label} ${this.getTranslation('common.copied', 'copied to clipboard')}`
+        : this.getTranslation('common.copied', 'Copied to clipboard');
       this.snackBar.open(
-        this.getTranslation('common.copied', 'Copied to clipboard'),
+        message,
         this.getTranslation('common.close', 'Close'),
         { duration: 2000 }
       );

@@ -23,6 +23,7 @@ import java.util.Optional;
 /**
  * API Key Authentication Filter.
  * Validates X-API-KEY header for API endpoints.
+ * Requires HMAC authentication (X-API-KEY + X-TIMESTAMP + X-SIGNATURE).
  * Runs BEFORE RateLimiterFilter to ensure only valid clients consume rate limits.
  */
 @Component
@@ -65,7 +66,7 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Validate API key (supports both hashed and plain text for backward compatibility)
+        // Validate API key
         Optional<Client> clientOpt = adminService.validateApiKey(apiKey);
 
         if (clientOpt.isEmpty()) {
@@ -76,20 +77,57 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
 
         Client client = clientOpt.get();
 
-        // Check if client is active
+        // Check client status (ACTIVE, SUSPENDED, REVOKED)
+        String status = client.getStatus() != null ? client.getStatus() : "ACTIVE";
+        if (!"ACTIVE".equals(status)) {
+            logger.warn("Client {} (ID: {}) has status {} - access denied", 
+                    client.getName(), client.getId(), status);
+            sendUnauthorizedResponse(response, "Client account is " + status.toLowerCase());
+            return;
+        }
+
+        // Check if client is active (backward compatibility)
         if (!client.getActive()) {
             logger.warn("Inactive client attempted access: {} (ID: {})", client.getName(), client.getId());
             sendUnauthorizedResponse(response, "Client account is inactive");
             return;
         }
 
-        // API key is valid - continue with the request
-        logger.debug("API key validated for client: {} (ID: {})", client.getName(), client.getId());
+        // HMAC authentication is required for all clients
+        String signature = request.getHeader("X-SIGNATURE");
+        if (signature == null || signature.isBlank()) {
+            logger.warn("Client {} (ID: {}) - HMAC authentication required. Missing X-SIGNATURE header.", 
+                    client.getName(), client.getId());
+            sendUnauthorizedResponse(response, "HMAC authentication required. Missing X-SIGNATURE header.");
+            return;
+        }
+        
+        String timestamp = request.getHeader("X-TIMESTAMP");
+        if (timestamp == null || timestamp.isBlank()) {
+            logger.warn("Client {} (ID: {}) - HMAC authentication required. Missing X-TIMESTAMP header.", 
+                    client.getName(), client.getId());
+            sendUnauthorizedResponse(response, "HMAC authentication required. Missing X-TIMESTAMP header.");
+            return;
+        }
+        
+        // Verify client uses HMAC auth
+        String authMethod = client.getAuthMethod() != null ? client.getAuthMethod() : "HMAC";
+        if (!"HMAC".equals(authMethod)) {
+            logger.warn("Client {} (ID: {}) uses {} auth but HMAC is required", 
+                    client.getName(), client.getId(), authMethod);
+            sendUnauthorizedResponse(response, "HMAC authentication is required for all clients");
+            return;
+        }
+        
+        // HMAC headers present - SignatureValidationFilter will validate the signature
+        logger.debug("Client {} (ID: {}) - HMAC headers present, signature validation will be performed", 
+                client.getName(), client.getId());
 
         // Store client info in request attribute for downstream filters/controllers
         request.setAttribute("authenticatedClient", client);
         request.setAttribute("clientId", client.getId());
         request.setAttribute("clientName", client.getName());
+        request.setAttribute("authMethod", authMethod);
 
         filterChain.doFilter(request, response);
     }

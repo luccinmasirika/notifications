@@ -49,6 +49,10 @@ services:
       ADMIN_USERNAME: admin
       ADMIN_PASSWORD: admin123
       CORS_ALLOWED_ORIGINS: "http://localhost,http://localhost:1015,http://localhost:4200,http://localhost:8080"
+      # CRITICAL: Set APP_CRYPTO_MASTER_KEY for production
+      # Generate using: ./scripts/generate-master-key.sh
+      # For development, leave empty (auto-generated, NOT SECURE)
+      APP_CRYPTO_MASTER_KEY: ${APP_CRYPTO_MASTER_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

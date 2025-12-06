@@ -10,11 +10,19 @@
     <mat-card-content>
       <form [formGroup]="testForm" (ngSubmit)="start()">
         <div class="form-row">
-          <mat-form-field appearance="outline" class="full-width">
+          <mat-form-field appearance="outline" class="half-width">
             <mat-label>API Key</mat-label>
             <input matInput formControlName="apiKey" placeholder="Enter API key" autocomplete="off">
             <mat-icon matPrefix>vpn_key</mat-icon>
             <mat-error>{{ getErrorMessage('apiKey') }}</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="half-width">
+            <mat-label>API Secret</mat-label>
+            <input matInput type="password" formControlName="apiSecret" placeholder="Enter API secret" autocomplete="off">
+            <mat-icon matPrefix>lock</mat-icon>
+            <mat-error>{{ getErrorMessage('apiSecret') }}</mat-error>
+            <mat-hint>Required for HMAC authentication</mat-hint>
           </mat-form-field>
         </div>
 

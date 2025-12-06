@@ -36,6 +36,15 @@ public class Client {
     @Column(name = "active")
     private Boolean active = true;
 
+    @Column(name = "api_secret_encrypted", nullable = true)
+    private String apiSecretEncrypted; // AES-256-GCM encrypted API secret (required for HMAC auth, nullable for migration)
+
+    @Column(name = "auth_method", nullable = false, length = 20)
+    private String authMethod = "HMAC"; // HMAC only (legacy support removed)
+
+    @Column(name = "status", nullable = false, length = 20)
+    private String status = "ACTIVE"; // ACTIVE, SUSPENDED, or REVOKED
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

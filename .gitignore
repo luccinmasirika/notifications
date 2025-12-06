@@ -94,7 +94,8 @@ jacoco.exec
 # Environment & Secrets - IMPORTANT SECURITY
 ################################################################################
 .env
-*.env
+# Allow .env.example files (documentation only, no secrets)
+!.env.example
 *.key
 *.pem
 *.p12

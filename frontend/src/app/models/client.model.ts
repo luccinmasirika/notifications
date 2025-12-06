@@ -4,6 +4,8 @@ export interface Client {
   name: string;
   priority: number;
   active: boolean;
+  authMethod?: 'HMAC'; // Authentication method (HMAC only, legacy removed)
+  status?: 'ACTIVE' | 'SUSPENDED' | 'REVOKED'; // Client status
   createdAt?: string;
 }
 
@@ -15,11 +17,21 @@ export interface Client {
 export interface ClientResponse {
   id: number;
   apiKey?: string; // Present only when created/updated with new API key
+  apiSecret?: string; // Present only when created (HMAC authentication)
   name: string;
   priority: number;
   active: boolean;
+  authMethod?: 'HMAC';
+  status?: 'ACTIVE' | 'SUSPENDED' | 'REVOKED';
   createdAt?: string;
-  warning?: string; // Warning message about API key visibility
+  warning?: string; // Warning message about API key/secret visibility
+}
+
+export interface ApiSecretResponse {
+  clientId: number;
+  apiSecret: string;
+  message: string;
+  warning: string;
 }
 export interface ClientLimit {
   id?: number;

@@ -153,12 +153,12 @@ public class RateLimiterService {
         // 5. Perform atomic check and increment for all limits
         // This eliminates race conditions in distributed environments
         var batchResult = redisCounter.atomicCheckAndIncrementBatch(
-                client.getId().toString(),
+            client.getId().toString(),
                 windowKey,
                 clientLimit.getMaxRequestsPerWindow(),
                 windowHardThreshold,
                 windowSoftThreshold,
-                clientLimit.getWindowSizeSeconds(),
+            clientLimit.getWindowSizeSeconds(),
                 monthlyKey,
                 clientLimit.getMonthlyQuota(),
                 monthlyHardThreshold,
@@ -166,7 +166,7 @@ public class RateLimiterService {
                 monthlyExpireDays,
                 globalKey,
                 globalLimit,
-                globalWindowSize
+            globalWindowSize
         );
 
         // 6. Determine the final decision based on atomic results

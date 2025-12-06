@@ -8,3 +8,10 @@ spring:
     redis:
       host: redis
       port: 6379
+
+# Crypto Service Configuration
+# Master key for encrypting API secrets (AES-256-GCM)
+# MUST be set via environment variable APP_CRYPTO_MASTER_KEY
+app:
+  crypto:
+    master-key: ${APP_CRYPTO_MASTER_KEY:}
