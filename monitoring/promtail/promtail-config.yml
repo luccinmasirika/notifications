@@ -1,0 +1,48 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    
+    relabel_configs:
+      # Extraire le nom du conteneur
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: 'container'
+        action: replace
+      
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: 'stream'
+        action: replace
+      
+      # Extraire le nom du service depuis les labels Docker Compose
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: 'service'
+        action: replace
+      
+      # Si pas de service, utiliser le nom du conteneur
+      - source_labels: ['__meta_docker_container_name', '__meta_docker_container_label_com_docker_compose_service']
+        regex: '/notifications-(.*);'
+        target_label: 'service'
+        replacement: '${1}'
+        action: replace
+      
+      # S'assurer qu'on a toujours au moins un label
+      - target_label: 'job'
+        replacement: 'docker'
+        action: replace
+      
+      # Garder seulement les conteneurs de notre projet
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        regex: 'notifications'
+        action: keep

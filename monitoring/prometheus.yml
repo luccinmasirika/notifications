@@ -1,0 +1,31 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Scrape Traefik metrics
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['traefik:8080']
+    metrics_path: '/metrics'
+    
+  # Scrape Spring Boot Actuator metrics (si activé)
+  - job_name: 'backend-1'
+    static_configs:
+      - targets: ['backend-1:1310']
+    metrics_path: '/actuator/prometheus'
+    
+  - job_name: 'backend-2'
+    static_configs:
+      - targets: ['backend-2:1310']
+    metrics_path: '/actuator/prometheus'
+    
+  - job_name: 'backend-3'
+    static_configs:
+      - targets: ['backend-3:1310']
+    metrics_path: '/actuator/prometheus'
+    
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
