@@ -84,11 +84,10 @@ public class RateLimiterService {
      * Performance is monitored via the checkAndConsumeTimer metric.
      *
      * @param apiKey API key from request header
-     * @param channel Notification channel (e.g., "SMS", "EMAIL")
      * @return RateDecision indicating whether to allow, throttle, or reject
      */
-    public RateDecision checkAndConsume(String apiKey, String channel) {
-        return checkAndConsumeTimer.record(() -> doCheckAndConsume(apiKey, channel));
+    public RateDecision checkAndConsume(String apiKey) {
+        return checkAndConsumeTimer.record(() -> doCheckAndConsume(apiKey));
     }
 
     /**
@@ -96,7 +95,7 @@ public class RateLimiterService {
      * Uses atomic Redis operations to eliminate race conditions in distributed environments.
      * Wrapped by checkAndConsume() for metrics.
      */
-    private RateDecision doCheckAndConsume(String apiKey, String channel) {
+    private RateDecision doCheckAndConsume(String apiKey) {
         // 1. Validate client exists and is active
         Optional<Client> clientOpt = findClientByApiKey(apiKey);
         if (clientOpt.isEmpty() || !clientOpt.get().getActive()) {

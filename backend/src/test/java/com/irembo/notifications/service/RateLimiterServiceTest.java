@@ -4,7 +4,6 @@ import com.irembo.notifications.infra.db.entity.Client;
 import com.irembo.notifications.infra.db.entity.ClientLimit;
 import com.irembo.notifications.infra.db.entity.SystemLimit;
 import com.irembo.notifications.infra.db.repository.ClientLimitRepository;
-import com.irembo.notifications.infra.db.repository.ClientRepository;
 import com.irembo.notifications.infra.db.repository.SystemLimitRepository;
 import com.irembo.notifications.infra.redis.RedisCounterRepository;
 import com.irembo.notifications.model.dto.RateDecision;
@@ -32,9 +31,6 @@ class RateLimiterServiceTest {
     private RedisCounterRepository redisCounter;
 
     @Mock
-    private ClientRepository clientRepository;
-
-    @Mock
     private ClientLimitRepository clientLimitRepository;
 
     @Mock
@@ -59,7 +55,6 @@ class RateLimiterServiceTest {
 
         rateLimiterService = new RateLimiterService(
                 redisCounter,
-                clientRepository,
                 clientLimitRepository,
                 systemLimitRepository,
                 adminService,
@@ -115,7 +110,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.ALLOW);
@@ -133,7 +128,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -153,7 +148,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -173,7 +168,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -191,7 +186,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -208,7 +203,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -224,7 +219,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: Pass plain text invalid key
-        RateDecision decision = rateLimiterService.checkAndConsume("invalid-key", "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume("invalid-key");
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -240,7 +235,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -256,7 +251,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -273,7 +268,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -290,7 +285,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -307,7 +302,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -325,7 +320,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -343,7 +338,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -358,7 +353,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -374,7 +369,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.ALLOW);
@@ -392,7 +387,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.ALLOW);
@@ -409,7 +404,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.HARD_REJECT);
@@ -426,7 +421,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then
         assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
@@ -443,7 +438,7 @@ class RateLimiterServiceTest {
 
         // When
         // V8: RateLimiterService now expects plain text API key (validated via AdminService)
-        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey, "SMS");
+        RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
         // Then: global limit soft-throttle is logged, but final decision remains ALLOW
         // because client-specific usage is still below soft-throttle threshold.

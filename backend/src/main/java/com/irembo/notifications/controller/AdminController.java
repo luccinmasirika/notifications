@@ -70,20 +70,6 @@ public class AdminController {
     }
 
     /**
-     * Get all clients (non-paginated).
-     * @deprecated Use GET /admin/clients/page instead for better performance
-     */
-    @GetMapping("/clients")
-    @Deprecated
-    public ResponseEntity<List<ClientDto>> getAllClients() {
-        List<Client> clients = clientRepository.findAll();
-        List<ClientDto> clientDtos = clients.stream()
-                .map(ClientDto::fromClient)
-                .toList();
-        return ResponseEntity.ok(clientDtos);
-    }
-
-    /**
      * Get clients with pagination.
      * @param page Page number (0-indexed, default: 0)
      * @param size Page size (default: 20, max: 100)
@@ -305,16 +291,6 @@ public class AdminController {
     }
 
     /**
-     * Get all client limits (non-paginated).
-     * @deprecated Use GET /admin/limits/page instead for better performance
-     */
-    @GetMapping("/limits")
-    @Deprecated
-    public ResponseEntity<List<ClientLimit>> getAllLimits() {
-        return ResponseEntity.ok(clientLimitRepository.findAll());
-    }
-
-    /**
      * Get client limits with pagination.
      * @param page Page number (0-indexed, default: 0)
      * @param size Page size (default: 20, max: 100)
@@ -487,6 +463,37 @@ public class AdminController {
         }
     }
 
+    /**
+     * Regenerate (rotate) API key for a client.
+     * Returns the new API key in plain text (only time it's visible).
+     * The old API key will no longer work.
+     * 
+     * @param id Client ID
+     * @return New plain text API key
+     */
+    @PostMapping("/clients/{id}/regenerate-api-key")
+    public ResponseEntity<ClientResponse> regenerateApiKey(@PathVariable @Min(1) Long id) {
+        try {
+            // Generate a new unique API key
+            String newApiKey = apiKeyGeneratorService.generateUniqueApiKey();
+            
+            // Update the client's API key
+            Client updated = adminService.updateClientApiKey(id, newApiKey);
+            
+            // Return the new API key in the response (only time it's visible)
+            ClientResponse response = ClientResponse.withApiKey(updated, newApiKey);
+            
+            logger.info("Regenerated API key for client {} (ID: {})", updated.getName(), id);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ClientResponse.withoutApiKey(null));
+        } catch (Exception e) {
+            logger.error("Error regenerating API key for client {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ClientResponse.withoutApiKey(null));
+        }
+    }
 
     /**
      * Update client status (ACTIVE, SUSPENDED, REVOKED).

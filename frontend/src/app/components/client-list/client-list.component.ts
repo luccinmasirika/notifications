@@ -24,9 +24,9 @@ export class ClientListComponent implements OnInit {
   }
   loadClients(): void {
     this.loading = true;
-    this.adminService.getClients().subscribe({
-      next: (clients) => {
-        this.clients = clients;
+    this.adminService.getClients(0, 100).subscribe({
+      next: (response) => {
+        this.clients = response.content;
         this.loading = false;
       },
       error: (error) => {

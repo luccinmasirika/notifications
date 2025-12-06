@@ -42,8 +42,11 @@ export class AdminService {
     return this.http.get<Client[]>(`${this.apiUrl}/clients`, { headers });
   }
 
-  getClients(): Observable<Client[]> {
-    return this.http.get<Client[]>(`${this.apiUrl}/clients`, { headers: this.getHeaders() });
+  getClients(page: number = 0, size: number = 20): Observable<{ content: Client[]; totalElements: number; totalPages: number; number: number; size: number }> {
+    return this.http.get<{ content: Client[]; totalElements: number; totalPages: number; number: number; size: number }>(
+      `${this.apiUrl}/clients/page?page=${page}&size=${size}`,
+      { headers: this.getHeaders() }
+    );
   }
 
   getClient(id: number): Observable<Client> {
@@ -105,6 +108,13 @@ export class AdminService {
     );
   }
 
+  regenerateApiKey(clientId: number): Observable<ClientResponse> {
+    return this.http.post<ClientResponse>(
+      `${this.apiUrl}/clients/${clientId}/regenerate-api-key`,
+      {},
+      { headers: this.getHeaders() }
+    );
+  }
 
   updateClientStatus(clientId: number, status: 'ACTIVE' | 'SUSPENDED' | 'REVOKED'): Observable<Client> {
     return this.http.put<Client>(

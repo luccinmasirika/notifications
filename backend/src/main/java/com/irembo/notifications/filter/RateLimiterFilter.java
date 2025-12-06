@@ -75,11 +75,8 @@ public class RateLimiterFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Extract notification channel from request (default to "GENERAL")
-        String channel = extractNotificationChannel(request);
-
         // Check rate limits
-        RateDecision decision = rateLimiterService.checkAndConsume(apiKey, channel);
+        RateDecision decision = rateLimiterService.checkAndConsume(apiKey);
 
         // Always set rate limit headers
         setRateLimitHeaders(response, decision);
@@ -96,19 +93,6 @@ public class RateLimiterFilter extends OncePerRequestFilter {
 
         // Continue with the request
         filterChain.doFilter(request, response);
-    }
-
-
-    /**
-     * Extract notification channel from request.
-     * This could come from query param, request body, or default to "GENERAL".
-     */
-    private String extractNotificationChannel(HttpServletRequest request) {
-        String channel = request.getParameter("channel");
-        if (channel != null && !channel.isBlank()) {
-            return channel.toUpperCase();
-        }
-        return "GENERAL";
     }
 
     /**

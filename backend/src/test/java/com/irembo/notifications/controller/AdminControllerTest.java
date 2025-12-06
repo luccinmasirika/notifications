@@ -78,16 +78,17 @@ class AdminControllerTest {
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testGetAllClients() throws Exception {
-        List<Client> clients = Arrays.asList(testClient);
-        when(clientRepository.findAll()).thenReturn(clients);
+        org.springframework.data.domain.Page<Client> clientsPage = 
+            new org.springframework.data.domain.PageImpl<>(Arrays.asList(testClient));
+        when(clientRepository.findAll(any(org.springframework.data.domain.Pageable.class))).thenReturn(clientsPage);
 
-        mockMvc.perform(get("/admin/clients"))
+        mockMvc.perform(get("/admin/clients/page"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].name").value("Test Client"))
-                .andExpect(jsonPath("$[0].priority").value(5));
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("Test Client"))
+                .andExpect(jsonPath("$.content[0].priority").value(5));
 
-        verify(clientRepository).findAll();
+        verify(clientRepository).findAll(any(org.springframework.data.domain.Pageable.class));
     }
 
     @Test
@@ -306,15 +307,16 @@ class AdminControllerTest {
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testGetAllLimits() throws Exception {
-        List<ClientLimit> limits = Arrays.asList(testLimit);
-        when(clientLimitRepository.findAll()).thenReturn(limits);
+        org.springframework.data.domain.Page<ClientLimit> limitsPage = 
+            new org.springframework.data.domain.PageImpl<>(Arrays.asList(testLimit));
+        when(clientLimitRepository.findAll(any(org.springframework.data.domain.Pageable.class))).thenReturn(limitsPage);
 
-        mockMvc.perform(get("/admin/limits"))
+        mockMvc.perform(get("/admin/limits/page"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].clientId").value(1))
-                .andExpect(jsonPath("$[0].windowSizeSeconds").value(10));
+                .andExpect(jsonPath("$.content[0].clientId").value(1))
+                .andExpect(jsonPath("$.content[0].windowSizeSeconds").value(10));
 
-        verify(clientLimitRepository).findAll();
+        verify(clientLimitRepository).findAll(any(org.springframework.data.domain.Pageable.class));
     }
 
     @Test

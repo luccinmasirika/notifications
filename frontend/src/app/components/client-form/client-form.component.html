@@ -27,21 +27,6 @@
           </mat-form-field>
         </div>
 
-        <!-- API Key field only shown in edit mode if user wants to change it -->
-        <div class="form-row" *ngIf="isEditMode">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>{{ 'client.apiKey' | translate }} ({{ getTranslation('client.optional', 'Optional') }})</mat-label>
-            <input matInput formControlName="apiKey" [placeholder]="'client.apiKeyPlaceholder' | translate">
-            <button mat-icon-button matSuffix type="button" (click)="generateApiKey()" [matTooltip]="'client.generateApiKey' | translate">
-              <mat-icon>auto_awesome</mat-icon>
-            </button>
-            <mat-hint>{{ getTranslation('client.apiKeyChangeHint', 'Leave empty to keep current API key') }}</mat-hint>
-            <mat-error *ngIf="clientForm.get('apiKey')?.hasError('minlength')">
-              {{ getErrorMessage('apiKey') }}
-            </mat-error>
-          </mat-form-field>
-        </div>
-
         <div class="form-row">
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>{{ 'client.priority' | translate }}</mat-label>

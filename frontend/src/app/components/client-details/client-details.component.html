@@ -105,7 +105,20 @@
               <div class="credential-field">
                 <label class="credential-label">API Key</label>
                 <div class="credential-display">
-                  <span class="credential-value placeholder">{{ 'Not available (stored securely)' }}</span>
+                  <span class="credential-value" *ngIf="regeneratedApiKey">{{ regeneratedApiKey }}</span>
+                  <span class="credential-value placeholder" *ngIf="!regeneratedApiKey">***********************</span>
+                  <button mat-icon-button *ngIf="regeneratedApiKey" (click)="copyToClipboard(regeneratedApiKey, 'API Key')" matTooltip="Copy API Key">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                  <button mat-icon-button *ngIf="regeneratedApiKey" (click)="onCloseRegeneratedApiKey()" matTooltip="Hide API Key">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+                <div class="credential-actions">
+                  <button mat-raised-button color="accent" (click)="onRegenerateApiKey()" [disabled]="loading" matTooltip="Generate a new API Key. The old API key will no longer work.">
+                    <mat-icon>refresh</mat-icon>
+                    Regenerate API Key
+                  </button>
                 </div>
               </div>
 
@@ -113,7 +126,7 @@
                 <label class="credential-label">API Secret</label>
                 <div class="credential-display">
                   <span class="credential-value" *ngIf="rotatedSecret">{{ rotatedSecret }}</span>
-                  <span class="credential-value placeholder" *ngIf="!rotatedSecret">••••••••••••••••</span>
+                  <span class="credential-value placeholder" *ngIf="!rotatedSecret">***********************</span>
                   <button mat-icon-button *ngIf="rotatedSecret" (click)="copyToClipboard(rotatedSecret, 'API Secret')" matTooltip="Copy Secret">
                     <mat-icon>content_copy</mat-icon>
                   </button>
@@ -133,7 +146,12 @@
             <!-- Warning when secret is displayed -->
             <div class="credentials-warning" *ngIf="rotatedSecret">
               <mat-icon>warning</mat-icon>
-              <span>⚠️ IMPORTANT: Save this secret now. The old secret is no longer valid and this will not be shown again.</span>
+              <span>IMPORTANT: Save this secret now. The old secret is no longer valid and this will not be shown again.</span>
+            </div>
+            <!-- Warning when API key is regenerated -->
+            <div class="credentials-warning" *ngIf="regeneratedApiKey">
+              <mat-icon>warning</mat-icon>
+              <span>IMPORTANT: Save this API key now. The old API key is no longer valid and this will not be shown again.</span>
             </div>
           </div>
         </div>

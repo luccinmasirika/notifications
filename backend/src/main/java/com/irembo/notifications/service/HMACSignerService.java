@@ -152,39 +152,5 @@ public class HMACSignerService {
             return false;
         }
     }
-
-    /**
-     * Calculate SHA-256 hash of request body for consistent body representation.
-     * This can be used if you want to hash the body instead of using raw JSON.
-     * Currently not used, but available for future enhancements.
-     * 
-     * @param body Request body
-     * @return SHA-256 hash (hex string)
-     */
-    @SuppressWarnings("unused")
-    private String hashBody(String body) {
-        if (body == null || body.isBlank()) {
-            return "";
-        }
-        
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(body.getBytes(StandardCharsets.UTF_8));
-            
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hashBytes) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            logger.error("SHA-256 algorithm not available", e);
-            throw new RuntimeException("SHA-256 algorithm not available", e);
-        }
-    }
 }
 

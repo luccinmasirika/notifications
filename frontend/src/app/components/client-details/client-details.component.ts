@@ -113,6 +113,7 @@ export class ClientDetailsComponent implements OnInit {
   }
 
   rotatedSecret: string | null = null;
+  regeneratedApiKey: string | null = null;
 
   onRotateSecret(): void {
     if (!this.clientId || !confirm('Rotate API secret? The old secret will no longer work. Make sure to update your client applications.')) {
@@ -143,6 +144,33 @@ export class ClientDetailsComponent implements OnInit {
 
   onCloseRotatedSecret(): void {
     this.rotatedSecret = null;
+  }
+
+  onRegenerateApiKey(): void {
+    if (!this.clientId || !confirm('Regenerate API key? The old API key will no longer work. Make sure to update your client applications.')) {
+      return;
+    }
+
+    this.loading = true;
+    this.adminService.regenerateApiKey(this.clientId).subscribe({
+      next: (response) => {
+        this.loading = false;
+        if (response.apiKey) {
+          this.regeneratedApiKey = response.apiKey;
+          this.snackBar.open('API key regenerated. Save it below - it will not be shown again.', 'Close', { duration: 5000 });
+          this.loadClientDetails();
+        }
+      },
+      error: (error) => {
+        console.error('Error regenerating API key:', error);
+        this.snackBar.open('Error regenerating API key: ' + (error.error?.error || error.message), 'Close', { duration: 5000 });
+        this.loading = false;
+      }
+    });
+  }
+
+  onCloseRegeneratedApiKey(): void {
+    this.regeneratedApiKey = null;
   }
 
   onUpdateStatus(newStatus: 'ACTIVE' | 'SUSPENDED' | 'REVOKED'): void {

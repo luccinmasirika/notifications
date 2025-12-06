@@ -50,13 +50,11 @@ export class ClientFormComponent implements OnInit {
     private snackBar: MatSnackBar,
     private translate: TranslateService
   ) {
-    // API key is generated automatically on backend, no need for form field in create mode
+    // API key is generated automatically on backend, no need for form field
     this.clientForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(255)]],
       priority: [0, [Validators.required, Validators.min(0)]],
-      active: [true],
-      // API key only needed in edit mode if user wants to change it
-      apiKey: ['']
+      active: [true]
     });
   }
   ngOnInit(): void {
@@ -72,21 +70,16 @@ export class ClientFormComponent implements OnInit {
   loadClient(): void {
     if (this.clientId) {
       this.loadingClient = true;
-      this.adminService.getClients().subscribe({
-        next: (clients) => {
+      this.adminService.getClients(0, 100).subscribe({
+        next: (response) => {
+          const clients = response.content;
           const client = clients.find(c => c.id === this.clientId);
           if (client) {
             this.clientForm.patchValue({
-              apiKey: client.apiKey || '', // API key not returned by backend after V8 (hashed)
               name: client.name,
               priority: client.priority,
               active: client.active
             });
-            // Make API key field optional when editing (since we don't have the original)
-            if (!client.apiKey) {
-              this.clientForm.get('apiKey')?.clearValidators();
-              this.clientForm.get('apiKey')?.updateValueAndValidity();
-            }
           }
           this.loadingClient = false;
         },
@@ -104,27 +97,17 @@ export class ClientFormComponent implements OnInit {
       const formValue = this.clientForm.value;
       if (this.isEditMode && this.clientId) {
         const updateRequest: UpdateClientRequest = {
-          apiKey: formValue.apiKey || undefined, // Only send if user provided a new API key
+          // API key generation is handled by backend only, not during edit
           name: formValue.name,
           priority: formValue.priority,
           active: formValue.active
         };
         this.adminService.updateClient(this.clientId, updateRequest).subscribe({
           next: (response: ClientResponse) => {
-            if (response.apiKey) {
-              // API key was updated - display on page
-              this.createdCredentials = {
-                apiKey: response.apiKey,
-                apiSecret: null // Secret not returned on update
-              };
-              this.showCredentials = true;
-              this.loading = false;
-            } else {
-              // No API key change
-              this.snackBar.open(this.translate.instant('client.clientUpdated'), this.translate.instant('common.close'), { duration: 3000 });
-              this.router.navigate(['/admin']);
-              this.loading = false;
-            }
+            // Client updated successfully - no API key generation during edit
+            this.snackBar.open(this.translate.instant('client.clientUpdated'), this.translate.instant('common.close'), { duration: 3000 });
+            this.router.navigate(['/admin']);
+            this.loading = false;
           },
           error: (error) => {
             console.error('Error updating client:', error);
@@ -184,22 +167,6 @@ export class ClientFormComponent implements OnInit {
   onCancel(): void {
     this.router.navigate(['/admin']);
   }
-  generateApiKey(): void {
-    this.loading = true;
-    this.adminService.generateApiKey().subscribe({
-      next: (response) => {
-        this.clientForm.patchValue({ apiKey: response.apiKey });
-        this.snackBar.open(this.translate.instant('client.apiKeyGenerated'), this.translate.instant('common.close'), { duration: 2000 });
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Error generating API key:', error);
-        const errorMessage = error.error?.message || this.translate.instant('client.errorGeneratingApiKey') || 'Error generating API key';
-        this.snackBar.open(errorMessage, this.translate.instant('common.close'), { duration: 3000 });
-        this.loading = false;
-      }
-    });
-  }
   getErrorMessage(fieldName: string): string {
     const field = this.clientForm.get(fieldName);
     if (field?.hasError('required')) {
@@ -208,9 +175,6 @@ export class ClientFormComponent implements OnInit {
     if (field?.hasError('minlength')) {
       if (fieldName === 'name') {
         return this.translate.instant('client.nameMinLength');
-      }
-      if (fieldName === 'apiKey') {
-        return this.translate.instant('client.apiKeyMinLength');
       }
       return `${fieldName} ${this.translate.instant('client.nameTooShort')}`;
     }
