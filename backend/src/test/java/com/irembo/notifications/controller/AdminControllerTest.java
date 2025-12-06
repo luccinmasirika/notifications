@@ -60,7 +60,6 @@ class AdminControllerTest {
     void setUp() {
         testClient = new Client();
         testClient.setId(1L);
-        // V8: Use ApiKeyHashService to hash the API key
         ApiKeyHashService hashService = new ApiKeyHashService();
         testClient.setApiKeyHash(hashService.hashApiKey("test-api-key-12345"));
         testClient.setName("Test Client");
@@ -144,7 +143,7 @@ class AdminControllerTest {
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testCreateClient_ValidationError() throws Exception {
         CreateClientRequest request = new CreateClientRequest(
-                "short", // Too short, minimum 16 characters
+                "short",
                 "New Client",
                 10,
                 true
@@ -259,7 +258,7 @@ class AdminControllerTest {
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testUpdateClientLimits_ValidationError() throws Exception {
         ClientLimitRequest request = new ClientLimitRequest(
-                0, // Invalid: must be at least 1
+                0,
                 200,
                 20000,
                 0.80,

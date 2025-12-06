@@ -14,11 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-/**
- * Notification Consumer.
- * Consumes notifications from RabbitMQ queue and processes them asynchronously.
- * Simulates sending with a random delay (1-3 seconds by default).
- */
 @Service
 public class NotificationConsumer {
 
@@ -48,30 +43,24 @@ public class NotificationConsumer {
                 message.channel(),
                 maskRecipientForLogging(message.recipient()));
 
-        // Find notification in database
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new RuntimeException("Notification not found: " + notificationId));
 
         try {
-            // Update status to PROCESSING
             notification.setStatus("PROCESSING");
             notificationRepository.save(notification);
             logger.debug("Notification {} status updated to PROCESSING", notificationId);
 
-            // Generate processing delay between min and max
             int delayMs = processingConfig.generateProcessingDelay();
             logger.info("Notification {} will be processed after {}ms delay", notificationId, delayMs);
 
-            // Simulate processing delay
             Thread.sleep(delayMs);
 
-            // Simulate sending notification (log only, no real provider)
             logger.info("Simulating sending notification {} via {} to {}",
                     notificationId,
                     message.channel(),
                     maskRecipientForLogging(message.recipient()));
 
-            // Update status to SENT
             notification.setStatus("SENT");
             notification.setProcessedAt(LocalDateTime.now());
             notificationRepository.save(notification);
@@ -95,10 +84,6 @@ public class NotificationConsumer {
         notificationRepository.save(notification);
     }
 
-    /**
-     * Mask recipient for logging (privacy).
-     * Shows first N and last N characters.
-     */
     private String maskRecipientForLogging(String recipient) {
         int minLength = recipientVisibleChars * 2;
         if (recipient == null || recipient.length() <= minLength) {

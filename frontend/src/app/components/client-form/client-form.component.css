@@ -86,7 +86,6 @@ mat-form-field {
   display: inline-block;
 }
 
-/* Credentials Display Section */
 .credentials-display-section {
   margin-top: var(--spacing-xl);
   padding-top: var(--spacing-lg);

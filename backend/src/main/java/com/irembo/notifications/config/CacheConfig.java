@@ -22,20 +22,6 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Hybrid Cache Configuration.
- *
- * Supports two cache implementations:
- * - Redis: Distributed cache for production (multi-instance deployment)
- * - Caffeine: Local in-memory cache for development (single instance)
- *
- * The cache type is controlled by the environment variable CACHE_TYPE or
- * Spring property cache.type (default: redis).
- *
- * Benefits:
- * - Redis: Shared cache across multiple instances, no inconsistencies
- * - Caffeine: Faster for dev, no external dependencies
- */
 @Configuration
 @EnableCaching
 public class CacheConfig {
@@ -54,10 +40,6 @@ public class CacheConfig {
     @Value("${app.cache.caffeine-max-size:500}")
     private int caffeineMaxSize;
 
-    /**
-     * Primary cache manager bean.
-     * Chooses between Redis and Caffeine based on cache.type property.
-     */
     @Bean
     @Primary
     public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory) {
@@ -70,10 +52,6 @@ public class CacheConfig {
         return redisCacheManager(redisConnectionFactory);
     }
 
-    /**
-     * Creates a Jackson ObjectMapper configured for Redis serialization.
-     * Includes Java 8 date/time support (JSR310 module) for LocalDateTime, etc.
-     */
     private ObjectMapper createRedisObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
@@ -81,32 +59,13 @@ public class CacheConfig {
         return mapper;
     }
 
-    /**
-     * Creates a GenericJackson2JsonRedisSerializer with Java 8 date/time support.
-     */
     private GenericJackson2JsonRedisSerializer createRedisSerializer() {
         return new GenericJackson2JsonRedisSerializer(createRedisObjectMapper());
     }
 
-    /**
-     * Redis cache manager (recommended for production).
-     * Provides distributed caching across multiple application instances.
-     *
-     * Configuration:
-     * - TTL: 24 hours for apiKeyValidation (for 100M+ users scale)
-     * - TTL: 5 minutes for other caches
-     * - Serialization: JSON (GenericJackson2JsonRedisSerializer with JSR310 support)
-     * - Transaction aware: Changes are synchronized with database transactions
-     * 
-     * Performance optimization for 100M+ users:
-     * - Long TTL on API key validation cache (24h) ensures >99.9% hit rate
-     * - API keys change rarely, so long TTL is safe
-     * - Reduces database load dramatically
-     */
     private CacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
         GenericJackson2JsonRedisSerializer serializer = createRedisSerializer();
         
-        // Default config: configurable TTL for most caches
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(defaultTtlMinutes))
                 .serializeValuesWith(
@@ -114,8 +73,6 @@ public class CacheConfig {
                 )
                 .disableCachingNullValues();
 
-        // Special config for API key validation: configurable TTL (default 24 hours)
-        // This is critical for 100M+ users scale
         RedisCacheConfiguration apiKeyValidationConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofHours(apiKeyValidationTtlHours))
                 .serializeValuesWith(
@@ -130,22 +87,6 @@ public class CacheConfig {
                 .build();
     }
 
-    /**
-     * Caffeine cache manager (local in-memory cache for development).
-     *
-     * Configuration:
-     * - Max size: 500 entries
-     * - TTL: 5 minutes after write
-     * - Stats: Enabled for monitoring (hit/miss ratio)
-     *
-     * Caches:
-     * - clientConfigs: Client limit configurations
-     * - systemLimits: System-wide rate limits
-     * - apiKeyValidation: API key validation results (CRITICAL for performance)
-     *
-     * Note: Not suitable for multi-instance deployments as each instance
-     * has its own cache, leading to potential inconsistencies.
-     */
     private CacheManager caffeineCacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager("clientConfigs", "systemLimits", "apiKeyValidation");
         cacheManager.setCaffeine(Caffeine.newBuilder()

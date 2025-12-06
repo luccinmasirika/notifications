@@ -17,18 +17,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Global Exception Handler.
- * Handles exceptions across all controllers and formats error responses.
- */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    /**
-     * Handle validation errors from @Valid annotations.
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(
             MethodArgumentNotValidException ex) {
@@ -55,9 +48,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    /**
-     * Handles validation errors for @Validated on @PathVariable and @RequestParam.
-     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<Map<String, Object>> handleConstraintViolationException(ConstraintViolationException ex) {
         List<Map<String, String>> errors = ex.getConstraintViolations().stream()
@@ -78,9 +68,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    /**
-     * Handles IllegalArgumentException for business logic validation errors.
-     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(IllegalArgumentException ex) {
         logger.warn("Invalid argument: {}", ex.getMessage());
@@ -94,9 +81,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    /**
-     * Handle generic exceptions.
-     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         logger.error("Unexpected error occurred", ex);

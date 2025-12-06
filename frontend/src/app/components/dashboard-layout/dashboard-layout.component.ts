@@ -54,7 +54,6 @@ export class DashboardLayoutComponent implements OnInit {
       .subscribe((event: any) => {
         this.currentRoute = event.url;
         this.updateBreadcrumbs();
-        // Close mobile menu on route change
         if (this.mobileMenuOpen) {
           this.closeMobileMenu();
         }
@@ -197,7 +196,6 @@ export class DashboardLayoutComponent implements OnInit {
     this.mobileMenuOpen = false;
   }
   onNavItemClick(): void {
-    // Close mobile menu when a navigation item is clicked
     if (this.mobileMenuOpen) {
       this.closeMobileMenu();
     }

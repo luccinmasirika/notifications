@@ -16,12 +16,6 @@ public class NotificationProcessingConfig {
 
     private final Random random = new Random();
 
-    /**
-     * Generate a processing delay between minDelayMs and maxDelayMs (inclusive).
-     * Used to simulate asynchronous notification processing.
-     *
-     * @return delay in milliseconds
-     */
     public int generateProcessingDelay() {
         if (minDelayMs >= maxDelayMs) {
             return minDelayMs;

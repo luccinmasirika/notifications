@@ -5,9 +5,6 @@ import jakarta.validation.Payload;
 
 import java.lang.annotation.*;
 
-/**
- * Validates that softThrottleThreshold is less than hardRejectThreshold.
- */
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = ThresholdsValidator.class)

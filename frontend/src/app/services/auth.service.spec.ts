@@ -9,7 +9,6 @@ describe('AuthService', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({});
     service = TestBed.inject(AuthService);
-    // Clear sessionStorage before each test
     sessionStorage.clear();
   });
 

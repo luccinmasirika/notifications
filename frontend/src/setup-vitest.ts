@@ -2,13 +2,11 @@ import { beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { BrowserDynamicTestingModule, platformBrowserDynamicTesting } from '@angular/platform-browser-dynamic/testing';
 
-// Initialize Angular testing environment
 TestBed.initTestEnvironment(
   BrowserDynamicTestingModule,
   platformBrowserDynamicTesting()
 );
 
-// Mock global objects
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation(query => ({
@@ -23,7 +21,6 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-// Mock sessionStorage
 const sessionStorageMock = (() => {
   let store: Record<string, string> = {};
 
@@ -45,7 +42,6 @@ Object.defineProperty(window, 'sessionStorage', {
   value: sessionStorageMock
 });
 
-// Mock localStorage
 const localStorageMock = (() => {
   let store: Record<string, string> = {};
 
@@ -67,7 +63,6 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock
 });
 
-// Clear storage before each test
 beforeEach(() => {
   sessionStorage.clear();
   localStorage.clear();

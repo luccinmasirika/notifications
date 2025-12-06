@@ -4,10 +4,6 @@ import com.irembo.notifications.infra.db.entity.Client;
 
 import java.time.LocalDateTime;
 
-/**
- * Client DTO for API responses.
- * Does NOT include apiKeyHash or apiSecretEncrypted for security reasons.
- */
 public record ClientDto(
         Long id,
         String name,
@@ -17,9 +13,6 @@ public record ClientDto(
         String status,
         LocalDateTime createdAt
 ) {
-    /**
-     * Create a ClientDto from a Client entity, excluding sensitive data.
-     */
     public static ClientDto fromClient(Client client) {
         return new ClientDto(
                 client.getId(),

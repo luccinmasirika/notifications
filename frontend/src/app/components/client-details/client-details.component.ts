@@ -42,7 +42,6 @@ export class ClientDetailsComponent implements OnInit {
   ) {}
   
   ngOnInit(): void {
-    // Check for credentials in navigation state (from client creation)
     const navigation = this.router.getCurrentNavigation();
     if (navigation?.extras?.state?.['credentials']) {
       this.newCredentials = navigation.extras.state['credentials'];

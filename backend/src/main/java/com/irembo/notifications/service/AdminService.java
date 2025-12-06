@@ -19,9 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Optional;
 
-/**
- * Admin service for managing clients and limits with cache invalidation.
- */
 @Service
 public class AdminService {
 
@@ -73,11 +70,6 @@ public class AdminService {
         this.apiKeyGeneratorService = apiKeyGeneratorService;
     }
 
-    /**
-     * Update client and evict cache.
-     * 
-     * Note: If updating API key, use updateClientApiKey() instead.
-     */
     @Transactional
     @CacheEvict(value = {"apiKeyValidation", "clientConfigs"}, allEntries = true)
     public Client updateClient(Long id, Client client) {
@@ -88,15 +80,6 @@ public class AdminService {
         return updated;
     }
 
-    /**
-     * Update client's API key with SHA-256 validation.
-     * 
-     * This method should be used when updating a client's API key.
-     *
-     * @param clientId Client ID
-     * @param newApiKey New plain text API key
-     * @return Updated client
-     */
     @Transactional
     @CacheEvict(value = {"apiKeyValidation", "clientConfigs"}, allEntries = true)
     public Client updateClientApiKey(Long clientId, String newApiKey) {
@@ -107,11 +90,9 @@ public class AdminService {
 
         Client client = clientOpt.get();
         
-        // Hash API key with SHA-256 + salt
-        // Reuse existing salt if available, otherwise generate new one
         String[] hashAndSalt = apiKeyValidationService.hashApiKeyForStorage(
             newApiKey, 
-            client.getClientSalt() // Reuse existing salt or null for new
+            client.getClientSalt()
         );
         String hashedKey = hashAndSalt[0];
         String clientSalt = hashAndSalt[1];
@@ -127,9 +108,6 @@ public class AdminService {
         return updated;
     }
 
-    /**
-     * Create or update client limit and evict cache.
-     */
     @Transactional
     @CacheEvict(value = "clientConfigs", allEntries = true)
     public ClientLimit createOrUpdateClientLimit(Long clientId, ClientLimit limit) {
@@ -142,7 +120,6 @@ public class AdminService {
 
         ClientLimit saved = clientLimitRepository.save(limit);
 
-        // Evict cache for this specific client
         Optional<Client> client = clientRepository.findById(clientId);
         client.ifPresent(c -> {
             evictClientCache(c.getApiKeyHash());
@@ -152,15 +129,11 @@ public class AdminService {
         return saved;
     }
 
-    /**
-     * Update client limit directly and evict cache.
-     */
     @Transactional
     @CacheEvict(value = "clientConfigs", allEntries = true)
     public ClientLimit updateClientLimit(ClientLimit limit) {
         ClientLimit saved = clientLimitRepository.save(limit);
 
-        // Evict cache for this specific client
         Optional<Client> client = clientRepository.findById(limit.getClientId());
         client.ifPresent(c -> {
             evictClientCache(c.getApiKeyHash());
@@ -170,9 +143,6 @@ public class AdminService {
         return saved;
     }
 
-    /**
-     * Delete client limit and evict cache.
-     */
     @Transactional
     @CacheEvict(value = "clientConfigs", allEntries = true)
     public void deleteClientLimit(Long id) {
@@ -181,7 +151,6 @@ public class AdminService {
             Long clientId = limit.get().getClientId();
             clientLimitRepository.deleteById(id);
 
-            // Evict cache for this specific client
             Optional<Client> client = clientRepository.findById(clientId);
             client.ifPresent(c -> {
                 evictClientCache(c.getApiKeyHash());
@@ -190,14 +159,10 @@ public class AdminService {
         }
     }
 
-    /**
-     * Evict cache entries for a specific client by API key hash.
-     */
     private void evictClientCache(String apiKeyHash) {
         try {
             var cache = cacheManager.getCache("clientConfigs");
             if (cache != null) {
-                // Evict all entries since we can't target specific keys easily with Caffeine
                 cache.clear();
                 logger.debug("Evicted clientConfigs cache");
             }
@@ -206,9 +171,6 @@ public class AdminService {
         }
     }
 
-    /**
-     * Get complete client details including usage statistics, limits, and status.
-     */
     public ClientDetailsResponse getClientDetails(Long clientId) {
         if (clientId == null) {
             throw new IllegalArgumentException("Client ID cannot be null");
@@ -222,7 +184,6 @@ public class AdminService {
         Optional<ClientLimit> limitOpt = clientLimitRepository.findByClientId(clientId);
         
         if (limitOpt.isEmpty()) {
-            // Return client info without limits
             return new ClientDetailsResponse(
                 ClientDto.fromClient(client),
                 null,
@@ -242,7 +203,6 @@ public class AdminService {
         String clientIdStr = clientId.toString();
         String yearMonth = redisCounter.getCurrentYearMonth();
 
-        // Window usage
         long windowCount = redisCounter.getWindowCounter(clientIdStr, limit.getWindowSizeSeconds());
         long maxWindowRequests = limit.getMaxRequestsPerWindow();
         double windowUsagePercent = maxWindowRequests > 0 
@@ -264,7 +224,6 @@ public class AdminService {
             windowBlocked
         );
 
-        // Monthly usage
         long monthlyCount = redisCounter.getMonthlyCounter(clientIdStr, yearMonth);
         long monthlyQuota = limit.getMonthlyQuota();
         double monthlyUsagePercent = monthlyQuota > 0 
@@ -283,11 +242,10 @@ public class AdminService {
             monthlyBlocked
         );
 
-        // Overall status
         boolean isBlocked = windowBlocked || monthlyBlocked || !client.getActive();
         boolean isSoftThrottled = (windowSoftThrottled || monthlySoftThrottled) && !isBlocked;
         String statusMessage = buildStatusMessage(isBlocked, isSoftThrottled, windowBlocked, monthlyBlocked, !client.getActive());
-        Instant nextReset = windowReset; // Window reset is more immediate than monthly
+        Instant nextReset = windowReset;
 
         ClientDetailsResponse.ClientStatus status = new ClientDetailsResponse.ClientStatus(
             client.getActive(),
@@ -326,59 +284,21 @@ public class AdminService {
         return "Active and within limits";
     }
 
-    /**
-     * Hash an API key using BCrypt.
-     *
-     * @param plainApiKey Plain text API key
-     * @return BCrypt hash
-     */
     public String hashApiKey(String plainApiKey) {
         return apiKeyHashService.hashApiKey(plainApiKey);
     }
 
-    /**
-     * Calculate SHA-256 index for API key lookup.
-     *
-     * @param plainApiKey Plain text API key
-     * @return SHA-256 hash (64 hex characters)
-     */
     public String calculateApiKeyIndex(String plainApiKey) {
         return apiKeyHashService.calculateApiKeyIndex(plainApiKey);
     }
 
-    /**
-     * Create a new client with hashed API key and default rate limits.
-     * 
-     * Uses SHA-256 validation for 100M+ users scale:
-     * - SHA-256(apiKey + clientSalt) for storage
-     * - SHA-256 index for O(1) lookup
-     * - Unique salt per client for security
-     *
-     * @param apiKey Plain text API key (will be hashed before storage)
-     * @param name Client name
-     * @param priority Client priority
-     * @param active Is client active
-     * @return Created client
-     */
-    /**
-     * Create a client with HMAC authentication (default method).
-     * All new clients are created with HMAC authentication enabled.
-     * 
-     * @param apiKey API Key (public identifier)
-     * @param name Client name
-     * @param priority Priority level
-     * @param active Active status
-     * @return CreateClientResult containing the created client and plain text API secret
-     *         The API secret should be shown to the user once and then stored securely
-     */
     @Transactional
     @CacheEvict(value = {"clientConfigs", "apiKeyValidation"}, allEntries = true)
     public CreateClientResult createClient(String apiKey, String name, Integer priority, Boolean active) {
-        // Hash API key with SHA-256 + unique salt
         String[] hashAndSalt = apiKeyValidationService.hashApiKeyForStorage(apiKey, null);
-        String hashedKey = hashAndSalt[0]; // SHA-256(apiKey + clientSalt)
-        String clientSalt = hashAndSalt[1]; // Unique salt for this client
-        String apiKeyIndex = apiKeyHashService.calculateApiKeyIndex(apiKey); // For O(1) lookup
+        String hashedKey = hashAndSalt[0];
+        String clientSalt = hashAndSalt[1];
+        String apiKeyIndex = apiKeyHashService.calculateApiKeyIndex(apiKey);
 
         Client client = new Client();
         client.setApiKeyHash(hashedKey);
@@ -392,29 +312,16 @@ public class AdminService {
 
         Client saved = clientRepository.save(client);
         
-        // Generate and assign API secret (HMAC required)
         String apiSecret = generateApiSecret(saved.getId());
         
         logger.info("Created client {} with HMAC authentication (ID: {})", name, saved.getId());
 
-        // Create default rate limits for the new client
         createDefaultClientLimits(saved.getId());
         logger.info("Created default rate limits for client {} (ID: {})", name, saved.getId());
 
         return new CreateClientResult(saved, apiSecret);
     }
 
-    /**
-     * Create default rate limits for a client.
-     * Default values:
-     * - Window size: 60 seconds
-     * - Max requests per window: 100
-     * - Monthly quota: 10,000
-     * - Soft throttle threshold: 80% (0.80)
-     * - Hard reject threshold: 100% (1.00)
-     *
-     * @param clientId Client ID
-     */
     private void createDefaultClientLimits(Long clientId) {
         ClientLimit defaultLimit = new ClientLimit();
         defaultLimit.setClientId(clientId);
@@ -427,25 +334,6 @@ public class AdminService {
         clientLimitRepository.save(defaultLimit);
     }
 
-    /**
-     * Validate an API key by checking against stored hashes.
-     *
-     * Uses SHA-256 with unique client salt for 100M+ users scale.
-     *
-     * Performance optimization:
-     * - SHA-256 with unique client salt (~1-5ms)
-     * - Uses SHA-256 index for O(1) database lookup
-     * - Aggressive caching (24h TTL, >99.9% hit rate target)
-     * - Cache key: full API key
-     *
-     * Performance:
-     * - Validation: ~1-5ms
-     * - Throughput: 10,000+ req/s
-     * - Scalability: 100M+ users
-     *
-     * @param plainApiKey Plain text API key to validate
-     * @return Optional containing the client if found and valid
-     */
     public Optional<Client> validateApiKey(String plainApiKey) {
         if (plainApiKey == null || plainApiKey.isBlank()) {
             return Optional.empty();
@@ -453,17 +341,9 @@ public class AdminService {
 
         logger.debug("Validating API key (cache miss)");
 
-        // Use SHA-256 validation with unique client salt
         return apiKeyValidationService.validateApiKey(plainApiKey);
     }
 
-    /**
-     * Generate and assign an API secret for a client.
-     * HMAC authentication is required for all clients.
-     * 
-     * @param clientId Client ID
-     * @return Plain text API secret (should be shown to user once, then stored securely)
-     */
     @Transactional
     @CacheEvict(value = {"apiKeyValidation", "clientConfigs"}, allEntries = true)
     public String generateApiSecret(Long clientId) {
@@ -474,13 +354,10 @@ public class AdminService {
 
         Client client = clientOpt.get();
         
-        // Generate secure API secret (64 bytes = 512 bits of entropy)
         String apiSecret = generateSecureApiSecret();
         
-        // Encrypt and store secret
         String encryptedSecret = cryptoService.encrypt(apiSecret);
         
-        // Update client (HMAC is required)
         client.setApiSecretEncrypted(encryptedSecret);
         client.setAuthMethod("HMAC");
         client.setStatus("ACTIVE");
@@ -491,15 +368,9 @@ public class AdminService {
         logger.info("Generated API secret for client {} (ID: {})", 
                 client.getName(), clientId);
         
-        return apiSecret; // Return plain text secret (show once to user)
+        return apiSecret;
     }
 
-    /**
-     * Rotate (regenerate) API secret for a client.
-     * 
-     * @param clientId Client ID
-     * @return New plain text API secret
-     */
     @Transactional
     @CacheEvict(value = {"apiKeyValidation", "clientConfigs"}, allEntries = true)
     public String rotateApiSecret(Long clientId) {
@@ -510,13 +381,11 @@ public class AdminService {
 
         Client client = clientOpt.get();
         
-        // All clients use HMAC - verify secret exists
         if (client.getApiSecretEncrypted() == null || client.getApiSecretEncrypted().isBlank()) {
             logger.warn("Client {} (ID: {}) has no API secret - generating new one", 
                     client.getName(), clientId);
         }
         
-        // Generate new secret
         String newApiSecret = generateApiSecret(clientId);
         
         logger.info("Rotated API secret for client {} (ID: {})", client.getName(), clientId);
@@ -525,12 +394,6 @@ public class AdminService {
     }
 
 
-    /**
-     * Update client status (ACTIVE, SUSPENDED, REVOKED).
-     * 
-     * @param clientId Client ID
-     * @param status New status
-     */
     @Transactional
     @CacheEvict(value = {"apiKeyValidation", "clientConfigs"}, allEntries = true)
     public void updateClientStatus(Long clientId, String status) {
@@ -546,7 +409,6 @@ public class AdminService {
         Client client = clientOpt.get();
         client.setStatus(status);
         
-        // Also update active flag for backward compatibility
         client.setActive("ACTIVE".equals(status));
         
         clientRepository.save(client);
@@ -557,14 +419,8 @@ public class AdminService {
     }
 
 
-    /**
-     * Generate a cryptographically secure API secret.
-     * Format: 64 bytes (512 bits) of random data, base64url-encoded.
-     * 
-     * @return Secure API secret
-     */
     private String generateSecureApiSecret() {
-        byte[] randomBytes = new byte[apiSecretBytes]; // Configurable bits of entropy
+        byte[] randomBytes = new byte[apiSecretBytes];
         java.security.SecureRandom secureRandom = new java.security.SecureRandom();
         secureRandom.nextBytes(randomBytes);
         

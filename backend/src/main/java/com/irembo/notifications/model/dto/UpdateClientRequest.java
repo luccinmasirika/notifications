@@ -4,9 +4,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Size;
 
-/**
- * Request DTO for updating a client.
- */
 public record UpdateClientRequest(
         @Size(min = 16, max = 255, message = "API key must be between 16 and 255 characters")
         String apiKey,

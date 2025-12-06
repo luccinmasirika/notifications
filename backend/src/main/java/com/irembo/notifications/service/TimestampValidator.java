@@ -5,23 +5,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-/**
- * Service for validating request timestamps to prevent replay attacks.
- * 
- * Security:
- * - Prevents replay attacks by rejecting old requests
- * - Prevents clock skew attacks by rejecting future requests
- * - Configurable time window (default: ±5 minutes)
- * 
- * Performance:
- * - Validation: <0.1ms (simple timestamp comparison)
- */
 @Service
 public class TimestampValidator {
 
     private static final Logger logger = LoggerFactory.getLogger(TimestampValidator.class);
     
-    // Default time window: 5 minutes (300,000 milliseconds)
     private static final long DEFAULT_TIME_WINDOW_MS = 5 * 60 * 1000L;
 
     private final long timeWindowMs;
@@ -32,12 +20,6 @@ public class TimestampValidator {
                 this.timeWindowMs, this.timeWindowMs / 60000);
     }
 
-    /**
-     * Validate a request timestamp.
-     * 
-     * @param requestTimestamp Unix timestamp in milliseconds from X-TIMESTAMP header
-     * @return true if timestamp is within acceptable window, false otherwise
-     */
     public boolean isValid(long requestTimestamp) {
         long currentTime = System.currentTimeMillis();
         long timeDifference = Math.abs(currentTime - requestTimestamp);
@@ -54,12 +36,6 @@ public class TimestampValidator {
         return valid;
     }
 
-    /**
-     * Validate a request timestamp and return detailed result.
-     * 
-     * @param requestTimestamp Unix timestamp in milliseconds
-     * @return ValidationResult with status and details
-     */
     public ValidationResult validateWithDetails(long requestTimestamp) {
         long currentTime = System.currentTimeMillis();
         long timeDifference = currentTime - requestTimestamp;
@@ -76,19 +52,10 @@ public class TimestampValidator {
         return new ValidationResult(true, "Timestamp is within acceptable window", timeDifference, timeWindowMs);
     }
 
-    /**
-     * Get the current timestamp in milliseconds (Unix epoch).
-     * Useful for generating timestamps in tests or client examples.
-     * 
-     * @return Current Unix timestamp in milliseconds
-     */
     public long getCurrentTimestamp() {
         return System.currentTimeMillis();
     }
 
-    /**
-     * Result of timestamp validation with details.
-     */
     public static class ValidationResult {
         private final boolean valid;
         private final String reason;

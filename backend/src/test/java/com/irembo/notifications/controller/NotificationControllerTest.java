@@ -39,7 +39,6 @@ class NotificationControllerTest {
     @Test
     @DisplayName("Should return 202 Accepted for valid SMS notification request")
     void shouldAcceptValidSmsRequest() throws Exception {
-        // Given
         NotificationRequest request = new NotificationRequest(
                 NotificationChannel.SMS,
                 "+250700000001",
@@ -55,7 +54,6 @@ class NotificationControllerTest {
         when(notificationService.queueNotification(any(), anyLong(), anyString()))
                 .thenReturn(expectedResponse);
 
-        // When & Then
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
@@ -70,7 +68,6 @@ class NotificationControllerTest {
     @Test
     @DisplayName("Should return 202 Accepted for valid EMAIL notification request")
     void shouldAcceptValidEmailRequest() throws Exception {
-        // Given
         NotificationRequest request = new NotificationRequest(
                 NotificationChannel.EMAIL,
                 "test@example.com",
@@ -86,7 +83,6 @@ class NotificationControllerTest {
         when(notificationService.queueNotification(any(), anyLong(), anyString()))
                 .thenReturn(expectedResponse);
 
-        // When & Then
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
@@ -101,7 +97,6 @@ class NotificationControllerTest {
     @Test
     @DisplayName("Should return 400 Bad Request when channel is missing")
     void shouldRejectMissingChannel() throws Exception {
-        // Given
         String invalidRequest = """
                 {
                     "to": "+250700000001",
@@ -109,7 +104,6 @@ class NotificationControllerTest {
                 }
                 """;
 
-        // When & Then
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidRequest)
@@ -121,7 +115,6 @@ class NotificationControllerTest {
     @Test
     @DisplayName("Should return 400 Bad Request when recipient is missing")
     void shouldRejectMissingRecipient() throws Exception {
-        // Given
         String invalidRequest = """
                 {
                     "channel": "SMS",
@@ -129,7 +122,6 @@ class NotificationControllerTest {
                 }
                 """;
 
-        // When & Then
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidRequest)
@@ -141,7 +133,6 @@ class NotificationControllerTest {
     @Test
     @DisplayName("Should return 400 Bad Request when message is missing")
     void shouldRejectMissingMessage() throws Exception {
-        // Given
         String invalidRequest = """
                 {
                     "channel": "SMS",
@@ -149,7 +140,6 @@ class NotificationControllerTest {
                 }
                 """;
 
-        // When & Then
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidRequest)
@@ -161,15 +151,13 @@ class NotificationControllerTest {
     @Test
     @DisplayName("Should return 400 Bad Request when message exceeds 500 characters")
     void shouldRejectMessageTooLong() throws Exception {
-        // Given
-        String longMessage = "a".repeat(501); // 501 characters
+        String longMessage = "a".repeat(501);
         NotificationRequest request = new NotificationRequest(
                 NotificationChannel.SMS,
                 "+250700000001",
                 longMessage
         );
 
-        // When & Then
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
@@ -182,7 +170,6 @@ class NotificationControllerTest {
     @Test
     @DisplayName("Should return 400 Bad Request for invalid channel")
     void shouldRejectInvalidChannel() throws Exception {
-        // Given
         String invalidRequest = """
                 {
                     "channel": "INVALID",
@@ -191,7 +178,6 @@ class NotificationControllerTest {
                 }
                 """;
 
-        // When & Then
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidRequest)
@@ -203,8 +189,7 @@ class NotificationControllerTest {
     @Test
     @DisplayName("Should accept message with exactly 500 characters")
     void shouldAcceptMessageWith500Characters() throws Exception {
-        // Given
-        String maxLengthMessage = "a".repeat(500); // Exactly 500 characters
+        String maxLengthMessage = "a".repeat(500);
         NotificationRequest request = new NotificationRequest(
                 NotificationChannel.SMS,
                 "+250700000001",
@@ -220,7 +205,6 @@ class NotificationControllerTest {
         when(notificationService.queueNotification(any(), anyLong(), anyString()))
                 .thenReturn(expectedResponse);
 
-        // When & Then
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
@@ -233,14 +217,12 @@ class NotificationControllerTest {
     @Test
     @DisplayName("Should return 400 Bad Request when recipient is empty string")
     void shouldRejectEmptyRecipient() throws Exception {
-        // Given
         NotificationRequest request = new NotificationRequest(
                 NotificationChannel.SMS,
                 "",
                 "Test message"
         );
 
-        // When & Then
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
@@ -253,14 +235,12 @@ class NotificationControllerTest {
     @Test
     @DisplayName("Should return 400 Bad Request when message is empty string")
     void shouldRejectEmptyMessage() throws Exception {
-        // Given
         NotificationRequest request = new NotificationRequest(
                 NotificationChannel.SMS,
                 "+250700000001",
                 ""
         );
 
-        // When & Then
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
@@ -273,7 +253,6 @@ class NotificationControllerTest {
     @Test
     @DisplayName("Should include timestamp in response")
     void shouldIncludeTimestampInResponse() throws Exception {
-        // Given
         NotificationRequest request = new NotificationRequest(
                 NotificationChannel.SMS,
                 "+250700000001",
@@ -289,7 +268,6 @@ class NotificationControllerTest {
         when(notificationService.queueNotification(any(), anyLong(), anyString()))
                 .thenReturn(expectedResponse);
 
-        // When & Then
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))

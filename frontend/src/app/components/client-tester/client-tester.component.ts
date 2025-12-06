@@ -92,20 +92,17 @@ export class ClientTesterComponent implements OnInit, OnDestroy {
         });
       }
       
-      // Generate default signature if API secret is provided
       if (apiSecret) {
         setTimeout(() => this.generateDefaultSignature(), 100);
       }
     });
     
-    // Watch for API secret changes to generate default signature
     this.testForm.get('apiSecret')?.valueChanges.subscribe(apiSecret => {
       if (apiSecret) {
         this.generateDefaultSignature();
       }
     });
     
-    // Also watch for changes to channel, destination, message to regenerate signature
     this.testForm.get('channel')?.valueChanges.subscribe(() => {
       if (this.testForm.get('apiSecret')?.value) {
         this.generateDefaultSignature();
@@ -123,10 +120,6 @@ export class ClientTesterComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Generate a default signature for testing purposes.
-   * This creates a signature for a sample POST request to /api/notifications.
-   */
   async generateDefaultSignature(): Promise<void> {
     const apiSecret = this.testForm.get('apiSecret')?.value;
     if (!apiSecret) {

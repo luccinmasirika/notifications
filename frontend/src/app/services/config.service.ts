@@ -19,7 +19,6 @@ export class ConfigService {
     this.config$ = this.loadConfig().pipe(
       shareReplay(1),
       catchError(() => {
-        // Fallback to default values if config.json cannot be loaded
         const defaultConfig: AppConfig = {
           apiUrl: 'http://localhost:8080/admin',
           notificationApiUrl: 'http://localhost:8080/api/notifications'

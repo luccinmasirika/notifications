@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Script pour importer le dashboard Grafana automatiquement
-# Usage: ./monitoring/import-dashboard.sh
-
 GRAFANA_URL="http://localhost:3000"
 GRAFANA_USER="admin"
 GRAFANA_PASSWORD="admin123"
@@ -10,7 +7,6 @@ DASHBOARD_FILE="./monitoring/grafana/dashboard-files/notifications-dashboard.jso
 
 echo "Importation du dashboard Grafana..."
 
-# Vérifier que Grafana est accessible
 if ! curl -s -f -u "$GRAFANA_USER:$GRAFANA_PASSWORD" "$GRAFANA_URL/api/health" > /dev/null; then
   echo "❌ Erreur: Grafana n'est pas accessible sur $GRAFANA_URL"
   echo "Assurez-vous que Grafana est démarré: docker-compose ps grafana"
@@ -19,13 +15,11 @@ fi
 
 echo "✅ Grafana est accessible"
 
-# Préparer le dashboard pour l'import (envelopper dans {"dashboard": ...})
 TEMP_FILE=$(mktemp)
 echo '{"dashboard":' > $TEMP_FILE
 cat $DASHBOARD_FILE >> $TEMP_FILE
 echo ',"overwrite":true}' >> $TEMP_FILE
 
-# Importer le dashboard avec Basic Auth
 RESPONSE=$(curl -s -X POST \
   -u "$GRAFANA_USER:$GRAFANA_PASSWORD" \
   -H "Content-Type: application/json" \

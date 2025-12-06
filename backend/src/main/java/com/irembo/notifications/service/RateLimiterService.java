@@ -26,7 +26,6 @@ public class RateLimiterService {
 
     private static final Logger logger = LoggerFactory.getLogger(RateLimiterService.class);
 
-    // Default thresholds (used as fallback if not configured)
     @Value("${app.rate-limiter.thresholds.soft-throttle:0.80}")
     private double defaultSoftThrottleThreshold;
 
@@ -41,7 +40,6 @@ public class RateLimiterService {
     private final SystemLimitRepository systemLimitRepository;
     private final AdminService adminService;
 
-    // Metrics
     private final Counter softThrottleCounter;
     private final Counter hardRejectCounter;
     private final Counter invalidApiKeyCounter;
@@ -58,7 +56,6 @@ public class RateLimiterService {
         this.systemLimitRepository = systemLimitRepository;
         this.adminService = adminService;
 
-        // Initialize metrics counters
         this.softThrottleCounter = Counter.builder("ratelimiter.soft_throttle")
                 .description("Number of requests that were soft throttled")
                 .tag("component", "ratelimiter")
@@ -72,31 +69,17 @@ public class RateLimiterService {
                 .tag("component", "ratelimiter")
                 .register(meterRegistry);
 
-        // Initialize timer for performance monitoring
         this.checkAndConsumeTimer = Timer.builder("ratelimiter.check_and_consume")
                 .description("Time taken to check and consume rate limits")
                 .tag("component", "ratelimiter")
                 .register(meterRegistry);
     }
 
-    /**
-     * Check rate limits and consume a request quota.
-     * Performance is monitored via the checkAndConsumeTimer metric.
-     *
-     * @param apiKey API key from request header
-     * @return RateDecision indicating whether to allow, throttle, or reject
-     */
     public RateDecision checkAndConsume(String apiKey) {
         return checkAndConsumeTimer.record(() -> doCheckAndConsume(apiKey));
     }
 
-    /**
-     * Internal implementation of rate limit check.
-     * Uses atomic Redis operations to eliminate race conditions in distributed environments.
-     * Wrapped by checkAndConsume() for metrics.
-     */
     private RateDecision doCheckAndConsume(String apiKey) {
-        // 1. Validate client exists and is active
         Optional<Client> clientOpt = findClientByApiKey(apiKey);
         if (clientOpt.isEmpty() || !clientOpt.get().getActive()) {
             logger.warn("Invalid or inactive API key: {}", apiKey);
@@ -107,7 +90,6 @@ public class RateLimiterService {
 
         Client client = clientOpt.get();
 
-        // 2. Get client limits
         Optional<ClientLimit> clientLimitOpt = findClientLimit(client.getId());
         if (clientLimitOpt.isEmpty()) {
             logger.warn("No rate limit configuration found for client: {}", client.getId());
@@ -117,10 +99,8 @@ public class RateLimiterService {
 
         ClientLimit clientLimit = clientLimitOpt.get();
 
-        // 3. Get global system limits if configured
         Optional<SystemLimit> globalLimitOpt = findGlobalLimit();
 
-        // 4. Prepare keys and thresholds for atomic operation
         long now = Instant.now().getEpochSecond();
         long windowStart = (now / clientLimit.getWindowSizeSeconds()) * clientLimit.getWindowSizeSeconds();
         String windowKey = String.format("rate:client:%s:window:%d", client.getId(), windowStart);
@@ -139,20 +119,16 @@ public class RateLimiterService {
             globalLimit = Long.valueOf(globalLimitEntity.getMaxRequestsPerWindow());
         }
 
-        // Get thresholds
         double windowHardThreshold = clientLimit.getHardRejectThreshold() != null
                 ? clientLimit.getHardRejectThreshold() : defaultHardRejectThreshold;
         double windowSoftThreshold = clientLimit.getSoftThrottleThreshold() != null
                 ? clientLimit.getSoftThrottleThreshold() : defaultSoftThrottleThreshold;
-        double monthlyHardThreshold = windowHardThreshold; // Same thresholds for monthly
+        double monthlyHardThreshold = windowHardThreshold;
         double monthlySoftThreshold = windowSoftThreshold;
 
-        // Calculate expiration times
         YearMonth ym = YearMonth.parse(yearMonth);
         int monthlyExpireDays = ym.lengthOfMonth() + 1;
 
-        // 5. Perform atomic check and increment for all limits
-        // This eliminates race conditions in distributed environments
         var batchResult = redisCounter.atomicCheckAndIncrementBatch(
             client.getId().toString(),
                 windowKey,
@@ -170,17 +146,13 @@ public class RateLimiterService {
             globalWindowSize
         );
 
-        // 6. Determine the final decision based on atomic results
         int mostRestrictiveDecision = batchResult.getMostRestrictiveDecision();
         double maxUsagePercent = batchResult.getMaxUsagePercent();
 
-        // Get reset times
         Instant windowReset = redisCounter.getWindowResetTime(clientLimit.getWindowSizeSeconds());
         Instant monthlyReset = redisCounter.getMonthlyResetTime();
 
-        // Build rate decision based on the most restrictive limit
-        if (mostRestrictiveDecision == 2) { // HARD_REJECT
-            // Find which limit caused the rejection
+        if (mostRestrictiveDecision == 2) {
             var windowResult = batchResult.windowResult();
             var monthlyResult = batchResult.monthlyResult();
             var globalResult = batchResult.globalResult();
@@ -206,7 +178,6 @@ public class RateLimiterService {
             return RateDecision.hardReject(limit, resetTime, maxUsagePercent);
         }
 
-        // Calculate remaining and determine if soft throttle
         var windowResult = batchResult.windowResult();
         var monthlyResult = batchResult.monthlyResult();
         
@@ -216,21 +187,17 @@ public class RateLimiterService {
                 ? Math.max(0, clientLimit.getMonthlyQuota() - monthlyResult.count()) : 0;
         long remaining = Math.min(windowRemaining, monthlyRemaining);
 
-        if (mostRestrictiveDecision == 1) { // SOFT_THROTTLE
+        if (mostRestrictiveDecision == 1) {
             softThrottleCounter.increment();
             logger.info("Rate limit soft throttle: usage: {}%", String.format("%.2f", maxUsagePercent));
             return RateDecision.softThrottle(
                     clientLimit.getMaxRequestsPerWindow(), remaining, windowReset, maxUsagePercent);
         }
 
-        // ALLOW
         return RateDecision.allow(
                 clientLimit.getMaxRequestsPerWindow(), remaining, windowReset, maxUsagePercent);
     }
 
-    /**
-     * Get usage information for a client.
-     */
     public UsageInfo getUsageInfo(String apiKey) {
         Optional<Client> clientOpt = findClientByApiKey(apiKey);
         if (clientOpt.isEmpty()) {
@@ -253,12 +220,7 @@ public class RateLimiterService {
         return new UsageInfo(windowUsage, monthlyUsage);
     }
 
-    /**
-     * Find client by API key (plain text).
-     * Uses AdminService to validate the API key against stored hashes.
-     */
     private Optional<Client> findClientByApiKey(String apiKey) {
-        // Use AdminService to validate plain text API key against stored hashes
         return adminService.validateApiKey(apiKey);
     }
 

@@ -28,7 +28,6 @@ import { Clipboard } from '@angular/cdk/clipboard';
     </h2>
     <mat-dialog-content>
       <div class="api-key-container">
-        <!-- Critical Warning -->
         <div class="warning-banner">
           <mat-icon class="warning-icon">warning</mat-icon>
           <div class="warning-content">
@@ -37,7 +36,6 @@ import { Clipboard } from '@angular/cdk/clipboard';
           </div>
         </div>
 
-        <!-- API Key Display with Mask/Reveal -->
         <div class="api-key-section">
           <label class="api-key-label">
             {{ getTranslation('client.apiKey', 'API Key') }}
@@ -65,7 +63,6 @@ import { Clipboard } from '@angular/cdk/clipboard';
           </p>
         </div>
 
-        <!-- Additional Info -->
         <div class="info-box">
           <mat-icon>info</mat-icon>
           <p>{{ getTranslation('client.apiKeyUsage', 'Use this key in the Authorization header: Authorization: Bearer YOUR_API_KEY') }}</p>
@@ -203,7 +200,7 @@ import { Clipboard } from '@angular/cdk/clipboard';
   `]
 })
 export class ApiKeyDialogComponent implements OnInit {
-  isVisible = true; // Start visible, user can hide if needed
+  isVisible = true;
   copied = false;
 
   constructor(
@@ -215,8 +212,6 @@ export class ApiKeyDialogComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Auto-copy on open (best practice - many services do this)
-    // User can still see it and verify, but it's ready to paste
     this.copyToClipboard();
   }
 
@@ -238,14 +233,12 @@ export class ApiKeyDialogComponent implements OnInit {
       { duration: 3000, panelClass: ['success-snackbar'] }
     );
     
-    // Reset copied state after 3 seconds
     setTimeout(() => {
       this.copied = false;
     }, 3000);
   }
 
   downloadAsFile(): void {
-    // Best practice: Allow download as text file
     const blob = new Blob([this.data.apiKey], { type: 'text/plain' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');

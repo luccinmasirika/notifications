@@ -17,39 +17,16 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
 
     boolean existsByApiKeyHash(String apiKeyHash);
 
-    /**
-     * Find client by SHA-256 index for fast O(1) lookup.
-     * Used to quickly locate a client before performing BCrypt verification.
-     */
     Optional<Client> findByApiKeyIndex(String apiKeyIndex);
 
-    /**
-     * Count active clients efficiently using a database query.
-     * Replaces the inefficient findAll().stream().filter() pattern.
-     */
     @Query("SELECT COUNT(c) FROM Client c WHERE c.active = true")
     long countActiveClients();
 
-    /**
-     * Alternative using Spring Data query derivation.
-     * Both methods work, but @Query is more explicit.
-     */
     long countByActiveTrue();
 
-    /**
-     * Find all clients with pagination support.
-     * Inherited from JpaRepository, but explicitly declared for clarity.
-     */
     Page<Client> findAll(Pageable pageable);
 
-    /**
-     * Find only active clients with pagination support.
-     */
     Page<Client> findByActiveTrue(Pageable pageable);
 
-    /**
-     * Find all active clients without pagination.
-     * Used for API key validation where we need to iterate through all active clients.
-     */
     List<Client> findByActiveTrue();
 }

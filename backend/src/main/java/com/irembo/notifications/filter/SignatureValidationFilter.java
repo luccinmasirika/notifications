@@ -24,24 +24,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
-/**
- * Signature Validation Filter for HMAC-SHA256 authentication.
- * 
- * This filter runs AFTER APIKeyAuthFilter (Order 2) to validate HMAC signatures.
- * HMAC authentication is REQUIRED for all clients (legacy support removed).
- * 
- * Headers required:
- * - X-API-KEY: Public API key (client identifier)
- * - X-TIMESTAMP: Unix timestamp in milliseconds
- * - X-SIGNATURE: HMAC-SHA256 signature
- * 
- * Security:
- * - Constant-time signature comparison
- * - Timestamp validation (prevents replay attacks)
- * - API secret never transmitted
- */
 @Component
-@Order(2) // Run after APIKeyAuthFilter (Order 1) to validate HMAC signature (required for all clients)
+@Order(2)
 public class SignatureValidationFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(SignatureValidationFilter.class);
@@ -77,18 +61,15 @@ public class SignatureValidationFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Skip signature validation for public endpoints
         if (filterPathMatcher.shouldSkip(path)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // HMAC authentication is required for all requests
         String apiKey = request.getHeader(API_KEY_HEADER);
         String timestampStr = request.getHeader(TIMESTAMP_HEADER);
         String signature = request.getHeader(SIGNATURE_HEADER);
 
-        // HMAC authentication required - validate all headers
         if (apiKey == null || apiKey.isBlank()) {
             logger.warn("HMAC auth requested but X-API-KEY header missing");
             sendUnauthorizedResponse(response, "Missing X-API-KEY header");
@@ -101,7 +82,6 @@ public class SignatureValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Parse timestamp
         long timestamp;
         try {
             timestamp = Long.parseLong(timestampStr);
@@ -111,27 +91,22 @@ public class SignatureValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Validate timestamp (prevent replay attacks)
         if (!timestampValidator.isValid(timestamp)) {
             logger.warn("Timestamp validation failed: timestamp={}", timestamp);
             sendUnauthorizedResponse(response, "Request timestamp is outside acceptable window");
             return;
         }
 
-        // Get request body (needed for signature verification)
         String requestBody = getRequestBody(request);
 
-        // Get client from request attribute (set by APIKeyAuthFilter)
         Client client = (Client) request.getAttribute("authenticatedClient");
         
         if (client == null) {
-            // Client not yet authenticated - APIKeyAuthFilter should have run first
             logger.warn("Client not found in request attributes - APIKeyAuthFilter should run first");
             sendUnauthorizedResponse(response, "Client authentication required before signature validation");
             return;
         }
 
-        // All clients must use HMAC auth
         String authMethod = client.getAuthMethod() != null ? client.getAuthMethod() : "HMAC";
         if (!"HMAC".equals(authMethod)) {
             logger.error("Client {} (ID: {}) has invalid auth_method: {}. HMAC is required.", 
@@ -140,14 +115,12 @@ public class SignatureValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Check client status
         if (!"ACTIVE".equals(client.getStatus())) {
             logger.warn("Client {} status is {} - access denied", client.getId(), client.getStatus());
             sendUnauthorizedResponse(response, "Client account is " + client.getStatus().toLowerCase());
             return;
         }
 
-        // Decrypt API secret
         String apiSecret;
         try {
             if (client.getApiSecretEncrypted() == null || client.getApiSecretEncrypted().isBlank()) {
@@ -162,7 +135,6 @@ public class SignatureValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Verify signature
         String httpMethod = request.getMethod();
         String requestPath = request.getRequestURI();
         
@@ -181,29 +153,20 @@ public class SignatureValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Signature is valid - continue with request
         logger.debug("HMAC signature validated for client: {} (ID: {})", client.getName(), client.getId());
         
-        // Store validation result in request attribute
         request.setAttribute("hmacSignatureValidated", true);
 
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Get request body as string.
-     * Uses CachedBodyHttpServletRequest to read body without consuming the stream.
-     * The ContentCachingFilter should wrap the request before this filter runs.
-     */
     private String getRequestBody(HttpServletRequest request) throws IOException {
-        // Check if request is wrapped with our custom wrapper
         if (request instanceof ContentCachingFilter.CachedBodyHttpServletRequest) {
             ContentCachingFilter.CachedBodyHttpServletRequest wrapper = 
                 (ContentCachingFilter.CachedBodyHttpServletRequest) request;
             return wrapper.getCachedBodyAsString();
         }
 
-        // Fallback: if not wrapped, try to read directly (should not happen if ContentCachingFilter runs first)
         logger.warn("Request not wrapped with CachedBodyHttpServletRequest - body may be consumed. " +
                    "Ensure ContentCachingFilter runs before SignatureValidationFilter.");
         try {
@@ -214,9 +177,6 @@ public class SignatureValidationFilter extends OncePerRequestFilter {
         }
     }
 
-    /**
-     * Send 401 Unauthorized response with JSON body.
-     */
     private void sendUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

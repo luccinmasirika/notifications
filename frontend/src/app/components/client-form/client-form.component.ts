@@ -40,8 +40,8 @@ export class ClientFormComponent implements OnInit {
   loading = false;
   loadingClient = false;
   clientId: number | null = null;
-  createdCredentials: { apiKey: string; apiSecret: string | null } | null = null; // Credentials après création
-  showCredentials = false; // Afficher les credentials sur la page
+  createdCredentials: { apiKey: string; apiSecret: string | null } | null = null;
+  showCredentials = false;
   constructor(
     private fb: FormBuilder,
     private adminService: AdminService,
@@ -50,7 +50,6 @@ export class ClientFormComponent implements OnInit {
     private snackBar: MatSnackBar,
     private translate: TranslateService
   ) {
-    // API key is generated automatically on backend, no need for form field
     this.clientForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(255)]],
       priority: [0, [Validators.required, Validators.min(0)]],
@@ -97,14 +96,12 @@ export class ClientFormComponent implements OnInit {
       const formValue = this.clientForm.value;
       if (this.isEditMode && this.clientId) {
         const updateRequest: UpdateClientRequest = {
-          // API key generation is handled by backend only, not during edit
           name: formValue.name,
           priority: formValue.priority,
           active: formValue.active
         };
         this.adminService.updateClient(this.clientId, updateRequest).subscribe({
           next: (response: ClientResponse) => {
-            // Client updated successfully - no API key generation during edit
             this.snackBar.open(this.translate.instant('client.clientUpdated'), this.translate.instant('common.close'), { duration: 3000 });
             this.router.navigate(['/admin']);
             this.loading = false;
@@ -116,16 +113,13 @@ export class ClientFormComponent implements OnInit {
           }
         });
       } else {
-        // API key will be auto-generated on backend if not provided
         const createRequest: CreateClientRequest = {
-          // No apiKey - backend will generate it automatically
           name: formValue.name,
           priority: formValue.priority,
           active: formValue.active
         };
         this.adminService.createClient(createRequest).subscribe({
           next: (response: ClientResponse) => {
-            // Display API key and secret directly on page
             if (response.apiKey) {
               const apiSecret = response.apiSecret || null;
               this.createdCredentials = {

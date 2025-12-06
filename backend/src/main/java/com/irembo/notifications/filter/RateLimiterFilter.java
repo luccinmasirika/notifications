@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Random;
 
 @Component
-@Order(2) // Run after APIKeyAuthFilter
+@Order(2)
 public class RateLimiterFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(RateLimiterFilter.class);
@@ -61,27 +61,22 @@ public class RateLimiterFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        // Skip rate limiting for health check and other non-API endpoints
         String path = request.getRequestURI();
         if (filterPathMatcher.shouldSkip(path)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Extract API key from header
         String apiKey = request.getHeader(API_KEY_HEADER);
         if (apiKey == null || apiKey.isBlank()) {
             sendUnauthorizedResponse(response, "Missing X-API-KEY header");
             return;
         }
 
-        // Check rate limits
         RateDecision decision = rateLimiterService.checkAndConsume(apiKey);
 
-        // Always set rate limit headers
         setRateLimitHeaders(response, decision);
 
-        // Handle decision
         if (decision.type() == DecisionType.HARD_REJECT) {
             handleHardReject(response, decision);
             return;
@@ -91,13 +86,9 @@ public class RateLimiterFilter extends OncePerRequestFilter {
             handleSoftThrottle(decision);
         }
 
-        // Continue with the request
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Set rate limit headers on the response.
-     */
     private void setRateLimitHeaders(HttpServletResponse response, RateDecision decision) {
         response.setHeader("X-RateLimit-Limit", String.valueOf(decision.limit()));
         response.setHeader("X-RateLimit-Remaining", String.valueOf(decision.remaining()));
@@ -113,14 +104,10 @@ public class RateLimiterFilter extends OncePerRequestFilter {
         }
     }
 
-    /**
-     * Handle hard reject - return 429 with JSON body.
-     */
     private void handleHardReject(HttpServletResponse response, RateDecision decision) throws IOException {
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        // Use standardized error response
         ErrorResponse errorResponse = ErrorResponse.of(
                 "Rate limit exceeded",
                 String.format("Rate limit exceeded. Usage: %.2f%%", decision.usagePercent()),
@@ -134,9 +121,6 @@ public class RateLimiterFilter extends OncePerRequestFilter {
         logger.warn("Rate limit hard reject: usage: {}%", String.format("%.2f", decision.usagePercent()));
     }
 
-    /**
-     * Handle soft throttle - add jitter delay.
-     */
     private void handleSoftThrottle(RateDecision decision) {
         int jitterMs = jitterMinMs + random.nextInt(jitterMaxMs - jitterMinMs);
 
@@ -149,9 +133,6 @@ public class RateLimiterFilter extends OncePerRequestFilter {
         }
     }
 
-    /**
-     * Send 401 Unauthorized response.
-     */
     private void sendUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

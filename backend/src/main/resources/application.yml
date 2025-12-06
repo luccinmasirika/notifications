@@ -61,92 +61,58 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
-# Admin credentials for HTTP Basic Auth
 admin:
   username: ${ADMIN_USERNAME:admin}
   password: ${ADMIN_PASSWORD:admin123}
 
-# Crypto Service Configuration
-# Master key for encrypting API secrets (AES-256-GCM)
-# MUST be set in production via environment variable APP_CRYPTO_MASTER_KEY
-# Generate a key using: CryptoService.generateMasterKeyBase64() or the provided script
 app:
   crypto:
     master-key: ${APP_CRYPTO_MASTER_KEY:}
-  # Authentication Configuration
-  # Timestamp window for HMAC signature validation (prevents replay attacks)
   auth:
     timestamp-window-ms: ${APP_AUTH_TIMESTAMP_WINDOW_MS:120000}
-  # Notification Processing Configuration
   notification:
     delay:
       min-ms: ${APP_NOTIFICATION_DELAY_MIN_MS:1000}
       max-ms: ${APP_NOTIFICATION_DELAY_MAX_MS:3000}
-  # Rate Limiter Configuration
   rate-limiter:
-    # Soft throttle jitter delay (random delay when throttling)
     jitter:
       min-ms: ${APP_RATE_LIMITER_JITTER_MIN_MS:50}
       max-ms: ${APP_RATE_LIMITER_JITTER_MAX_MS:200}
-    # Default thresholds (used as fallback)
     thresholds:
       soft-throttle: ${APP_RATE_LIMITER_SOFT_THROTTLE_THRESHOLD:0.80}
       hard-reject: ${APP_RATE_LIMITER_HARD_REJECT_THRESHOLD:1.00}
-    # Retry delay for invalid API keys (seconds)
     invalid-api-key-retry-delay-seconds: ${APP_RATE_LIMITER_INVALID_API_KEY_RETRY_DELAY_SECONDS:60}
-  # Default Client Limits (used when creating new clients)
   default-client-limits:
     window-size-seconds: ${APP_DEFAULT_CLIENT_LIMITS_WINDOW_SIZE_SECONDS:60}
     max-requests-per-window: ${APP_DEFAULT_CLIENT_LIMITS_MAX_REQUESTS_PER_WINDOW:100}
     monthly-quota: ${APP_DEFAULT_CLIENT_LIMITS_MONTHLY_QUOTA:10000}
     soft-throttle-threshold: ${APP_DEFAULT_CLIENT_LIMITS_SOFT_THROTTLE_THRESHOLD:0.80}
     hard-reject-threshold: ${APP_DEFAULT_CLIENT_LIMITS_HARD_REJECT_THRESHOLD:1.00}
-  # Admin Rate Limiter Configuration
   admin-rate-limiter:
     window-seconds: ${APP_ADMIN_RATE_LIMITER_WINDOW_SECONDS:300}
     max-requests: ${APP_ADMIN_RATE_LIMITER_MAX_REQUESTS:100}
-  # Cache Configuration
   cache:
-    # API key validation cache TTL (hours)
     api-key-validation-ttl-hours: ${APP_CACHE_API_KEY_VALIDATION_TTL_HOURS:24}
-    # Default cache TTL (minutes)
     default-ttl-minutes: ${APP_CACHE_DEFAULT_TTL_MINUTES:5}
-    # Caffeine cache max size
     caffeine-max-size: ${APP_CACHE_CAFFEINE_MAX_SIZE:500}
-  # Pagination Configuration
   pagination:
     default-size: ${APP_PAGINATION_DEFAULT_SIZE:20}
     max-size: ${APP_PAGINATION_MAX_SIZE:100}
-  # API Key Generation Configuration
   api-key:
-    # Key bytes (256 bits = 32 bytes)
     key-bytes: ${APP_API_KEY_KEY_BYTES:32}
-    # Maximum attempts to generate unique key
     max-attempts: ${APP_API_KEY_MAX_ATTEMPTS:10}
-    # API key prefix
     prefix: ${APP_API_KEY_PREFIX:LM}
-  # API Secret Configuration
   api-secret:
-    # Secret bytes (512 bits = 64 bytes)
     secret-bytes: ${APP_API_SECRET_SECRET_BYTES:64}
-  # Filter Configuration
   filter:
-    # Paths to skip authentication/rate limiting (comma-separated)
     skip-paths: ${APP_FILTER_SKIP_PATHS:/health,/actuator/health,/actuator/**,/admin/**,/swagger-ui**,/v3/api-docs**,/api-docs**,/error**}
-    # Masking configuration for logging (privacy)
     masking:
-      # API key: show last N characters
       api-key-visible-chars: ${APP_FILTER_MASKING_API_KEY_VISIBLE_CHARS:4}
-      # Recipient: show first N and last N characters
       recipient-visible-chars: ${APP_FILTER_MASKING_RECIPIENT_VISIBLE_CHARS:3}
-      # IP address: show first N characters for IPv6
       ip-visible-chars: ${APP_FILTER_MASKING_IP_VISIBLE_CHARS:8}
-  # Redis Configuration
   redis:
-    # Key prefixes
     key-prefix:
       admin-rate-limit: ${APP_REDIS_KEY_PREFIX_ADMIN_RATE_LIMIT:admin:ratelimit:}
-  # OpenAPI Configuration
   openapi:
     info:
       title: ${APP_OPENAPI_INFO_TITLE:Irembo Notifications API}
@@ -162,12 +128,9 @@ app:
       url: ${APP_OPENAPI_SERVER_URL:http://localhost:1310}
       description: ${APP_OPENAPI_SERVER_DESCRIPTION:Development server}
 
-# CORS Configuration
-# Allowed origins can be overridden via environment variable CORS_ALLOWED_ORIGINS
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost,http://localhost:1015,http://localhost:4200,http://localhost:8080}
 
-# Spring Boot Actuator Configuration
 management:
   endpoints:
     web:
@@ -185,11 +148,9 @@ management:
       prometheus:
         enabled: true
 
-# Cache type selection (redis for production, caffeine for dev)
 cache:
   type: ${CACHE_TYPE:redis}
 
-# OpenAPI/Swagger Configuration
 springdoc:
   api-docs:
     path: /v3/api-docs

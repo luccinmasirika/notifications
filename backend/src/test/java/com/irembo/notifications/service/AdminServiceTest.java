@@ -51,7 +51,6 @@ class AdminServiceTest {
     void setUp() {
         testClient = new Client();
         testClient.setId(1L);
-        // Use ApiKeyHashService to hash the API key (V8 migration - no plain text storage)
         ApiKeyHashService hashService = new ApiKeyHashService();
         testClient.setApiKeyHash(hashService.hashApiKey("test-api-key-123456"));
         testClient.setName("Test Client");
@@ -117,7 +116,6 @@ class AdminServiceTest {
         ClientLimit result = adminService.createOrUpdateClientLimit(1L, testLimit);
 
         assertNotNull(result);
-        // Verify that the existing limit ID was set
         assertEquals(2L, testLimit.getId());
 
         verify(clientLimitRepository).findByClientId(1L);
@@ -172,7 +170,6 @@ class AdminServiceTest {
         when(clientRepository.save(any(Client.class))).thenReturn(testClient);
         when(cacheManager.getCache("clientConfigs")).thenReturn(null);
 
-        // Should not throw exception even if cache is null
         assertDoesNotThrow(() -> adminService.updateClient(1L, testClient));
 
         verify(clientRepository).save(testClient);
@@ -184,7 +181,6 @@ class AdminServiceTest {
         when(cacheManager.getCache("clientConfigs")).thenReturn(cache);
         doThrow(new RuntimeException("Cache error")).when(cache).clear();
 
-        // Should not throw exception even if cache clear fails
         assertDoesNotThrow(() -> adminService.updateClient(1L, testClient));
 
         verify(clientRepository).save(testClient);
@@ -201,7 +197,5 @@ class AdminServiceTest {
         ClientLimit result = adminService.updateClientLimit(testLimit);
 
         assertNotNull(result);
-        // When client is not found, cache eviction is handled via @CacheEvict and
-        // no direct interaction with the underlying Cache is required here.
     }
 }

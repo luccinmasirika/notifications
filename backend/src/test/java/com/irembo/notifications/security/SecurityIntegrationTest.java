@@ -17,9 +17,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Security integration tests for API key authentication and authorization.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
@@ -53,7 +50,6 @@ class SecurityIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
-                // Message now comes from APIKeyAuthFilter: "Missing X-API-KEY header"
                 .andExpect(jsonPath("$.message").value("Missing X-API-KEY header"));
     }
 
@@ -72,7 +68,6 @@ class SecurityIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("Unauthorized"))
-                // Empty API key is treated the same as missing header
                 .andExpect(jsonPath("$.message").value("Missing X-API-KEY header"));
     }
 
@@ -149,14 +144,12 @@ class SecurityIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized())
-                // Ensure full API key is not exposed in response
                 .andExpect(jsonPath("$.message").value("Invalid API key"));
     }
 
     @Test
     @DisplayName("Should protect all /api/* endpoints with API key")
     void shouldProtectApiEndpointsWithApiKey() throws Exception {
-        // Test POST endpoint
         mockMvc.perform(post("/api/notifications")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
@@ -172,7 +165,6 @@ class SecurityIntegrationTest {
                 "Test message"
         );
 
-        // Try with lowercase header (should fail)
         mockMvc.perform(post("/api/notifications")
                         .header("x-api-key", "test-api-key-123")
                         .contentType(MediaType.APPLICATION_JSON)

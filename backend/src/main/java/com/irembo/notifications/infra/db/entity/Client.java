@@ -19,13 +19,13 @@ public class Client {
     private Long id;
 
     @Column(name = "api_key_hash", unique = true, nullable = false, length = 255)
-    private String apiKeyHash; // BCrypt hash of the API key (60 chars)
+    private String apiKeyHash;
 
     @Column(name = "api_key_index", unique = true, nullable = true, length = 64)
-    private String apiKeyIndex; // SHA-256 hash for fast O(1) lookup (64 hex chars)
+    private String apiKeyIndex;
 
     @Column(name = "client_salt", unique = true, nullable = true, length = 64)
-    private String clientSalt; // Unique salt per client for fast SHA-256 validation (64 hex chars)
+    private String clientSalt;
 
     @Column(name = "name", nullable = false)
     private String name;
@@ -37,13 +37,13 @@ public class Client {
     private Boolean active = true;
 
     @Column(name = "api_secret_encrypted", nullable = true)
-    private String apiSecretEncrypted; // AES-256-GCM encrypted API secret (required for HMAC auth, nullable for migration)
+    private String apiSecretEncrypted;
 
     @Column(name = "auth_method", nullable = false, length = 20)
-    private String authMethod = "HMAC"; // HMAC only (legacy support removed)
+    private String authMethod = "HMAC";
 
     @Column(name = "status", nullable = false, length = 20)
-    private String status = "ACTIVE"; // ACTIVE, SUSPENDED, or REVOKED
+    private String status = "ACTIVE";
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

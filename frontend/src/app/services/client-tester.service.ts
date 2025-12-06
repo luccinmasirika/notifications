@@ -43,7 +43,6 @@ export class ClientTesterService {
     const path = '/api/notifications';
     const body = JSON.stringify(request);
 
-    // Generate HMAC signature
     const signature = await this.hmacService.generateSignatureAsync(
       apiSecret,
       timestamp,

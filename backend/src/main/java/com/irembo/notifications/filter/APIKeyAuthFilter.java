@@ -22,14 +22,8 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * API Key Authentication Filter.
- * Validates X-API-KEY header for API endpoints.
- * Requires HMAC authentication (X-API-KEY + X-TIMESTAMP + X-SIGNATURE).
- * Runs BEFORE RateLimiterFilter to ensure only valid clients consume rate limits.
- */
 @Component
-@Order(1) // Run before RateLimiterFilter (which has default order)
+@Order(1)
 public class APIKeyAuthFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(APIKeyAuthFilter.class);
@@ -60,23 +54,19 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Skip authentication for public endpoints and admin endpoints
         if (filterPathMatcher.shouldSkip(path)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Extract API key from header
         String apiKey = request.getHeader(API_KEY_HEADER);
 
-        // Check if API key is present
         if (apiKey == null || apiKey.isBlank()) {
             logger.warn("Missing X-API-KEY header for path: {}", path);
             sendUnauthorizedResponse(response, "Missing X-API-KEY header");
             return;
         }
 
-        // Validate API key
         Optional<Client> clientOpt = adminService.validateApiKey(apiKey);
 
         if (clientOpt.isEmpty()) {
@@ -87,7 +77,6 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
 
         Client client = clientOpt.get();
 
-        // Check client status (ACTIVE, SUSPENDED, REVOKED)
         String status = client.getStatus() != null ? client.getStatus() : "ACTIVE";
         if (!"ACTIVE".equals(status)) {
             logger.warn("Client {} (ID: {}) has status {} - access denied", 
@@ -96,14 +85,12 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Check if client is active (backward compatibility)
         if (!client.getActive()) {
             logger.warn("Inactive client attempted access: {} (ID: {})", client.getName(), client.getId());
             sendUnauthorizedResponse(response, "Client account is inactive");
             return;
         }
 
-        // HMAC authentication is required for all clients
         String signature = request.getHeader("X-SIGNATURE");
         if (signature == null || signature.isBlank()) {
             logger.warn("Client {} (ID: {}) - HMAC authentication required. Missing X-SIGNATURE header.", 
@@ -120,7 +107,6 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
             return;
         }
         
-        // Verify client uses HMAC auth
         String authMethod = client.getAuthMethod() != null ? client.getAuthMethod() : "HMAC";
         if (!"HMAC".equals(authMethod)) {
             logger.warn("Client {} (ID: {}) uses {} auth but HMAC is required", 
@@ -129,11 +115,9 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
             return;
         }
         
-        // HMAC headers present - SignatureValidationFilter will validate the signature
         logger.debug("Client {} (ID: {}) - HMAC headers present, signature validation will be performed", 
                 client.getName(), client.getId());
 
-        // Store client info in request attribute for downstream filters/controllers
         request.setAttribute("authenticatedClient", client);
         request.setAttribute("clientId", client.getId());
         request.setAttribute("clientName", client.getName());
@@ -143,9 +127,6 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
     }
 
 
-    /**
-     * Send 401 Unauthorized response with JSON body.
-     */
     private void sendUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -162,9 +143,6 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
         response.getWriter().flush();
     }
 
-    /**
-     * Mask API key for logging (show only last N characters).
-     */
     private String maskApiKeyForLogging(String apiKey) {
         if (apiKey == null || apiKey.length() <= apiKeyVisibleChars) {
             return "****";

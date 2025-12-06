@@ -5,9 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/**
- * Request DTO for creating or updating system limits.
- */
 public record SystemLimitRequest(
         @NotNull(message = "Name is required")
         @Size(min = 1, max = 255, message = "Name must be between 1 and 255 characters")
@@ -28,7 +25,6 @@ public record SystemLimitRequest(
         Boolean active
 ) {
     public SystemLimitRequest {
-        // Set default if not provided
         if (active == null) {
             active = true;
         }

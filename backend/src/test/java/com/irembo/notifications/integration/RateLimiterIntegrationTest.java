@@ -29,9 +29,6 @@ import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/**
- * Integration tests for rate limiting with real Redis and PostgreSQL using Testcontainers.
- */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
@@ -74,11 +71,9 @@ class RateLimiterIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        // Clean up
         clientLimitRepository.deleteAll();
         clientRepository.deleteAll();
 
-        // Create test client (V8: use hash instead of plain text API key)
         testClient = new Client();
         ApiKeyHashService hashService = new ApiKeyHashService();
         testClient.setApiKeyHash(hashService.hashApiKey(testApiKey));
@@ -87,11 +82,10 @@ class RateLimiterIntegrationTest {
         testClient.setPriority(1);
         testClient = clientRepository.save(testClient);
 
-        // Create client limits
         ClientLimit limit = new ClientLimit();
         limit.setClientId(testClient.getId());
         limit.setWindowSizeSeconds(10);
-        limit.setMaxRequestsPerWindow(5); // Low limit for testing
+        limit.setMaxRequestsPerWindow(5);
         limit.setMonthlyQuota(100);
         clientLimitRepository.save(limit);
     }
@@ -105,7 +99,6 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        // First request should be allowed
         mockMvc.perform(post("/api/notifications")
                         .header("X-API-KEY", testApiKey)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -145,7 +138,6 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        // Make 4 requests (80% of 5)
         for (int i = 0; i < 4; i++) {
             mockMvc.perform(post("/api/notifications")
                             .header("X-API-KEY", testApiKey)
@@ -154,7 +146,6 @@ class RateLimiterIntegrationTest {
                     .andExpect(status().isAccepted());
         }
 
-        // 5th request should be soft throttled (but still accepted)
         mockMvc.perform(post("/api/notifications")
                         .header("X-API-KEY", testApiKey)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -172,7 +163,6 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        // Exhaust the limit (5 requests)
         for (int i = 0; i < 5; i++) {
             mockMvc.perform(post("/api/notifications")
                             .header("X-API-KEY", testApiKey)
@@ -181,7 +171,6 @@ class RateLimiterIntegrationTest {
                     .andExpect(status().isAccepted());
         }
 
-        // 6th request should be rejected
         mockMvc.perform(post("/api/notifications")
                         .header("X-API-KEY", testApiKey)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -201,7 +190,6 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        // Exhaust limit
         for (int i = 0; i < 5; i++) {
             mockMvc.perform(post("/api/notifications")
                             .header("X-API-KEY", testApiKey)
@@ -210,7 +198,6 @@ class RateLimiterIntegrationTest {
                     .andExpect(status().isAccepted());
         }
 
-        // Next request should have Retry-After
         mockMvc.perform(post("/api/notifications")
                         .header("X-API-KEY", testApiKey)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -229,7 +216,6 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        // First request
         mockMvc.perform(post("/api/notifications")
                         .header("X-API-KEY", testApiKey)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -238,7 +224,6 @@ class RateLimiterIntegrationTest {
                 .andExpect(header().string("X-RateLimit-Limit", "5"))
                 .andExpect(header().exists("X-RateLimit-Remaining"));
 
-        // Second request - should have less remaining
         mockMvc.perform(post("/api/notifications")
                         .header("X-API-KEY", testApiKey)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -250,7 +235,6 @@ class RateLimiterIntegrationTest {
     @Test
     @DisplayName("Should reject inactive client")
     void shouldRejectInactiveClient() throws Exception {
-        // Deactivate client
         testClient.setActive(false);
         clientRepository.save(testClient);
 
@@ -277,7 +261,6 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        // Make 3 concurrent requests (should all succeed)
         for (int i = 0; i < 3; i++) {
             mockMvc.perform(post("/api/notifications")
                             .header("X-API-KEY", testApiKey)
@@ -286,7 +269,6 @@ class RateLimiterIntegrationTest {
                     .andExpect(status().isAccepted());
         }
 
-        // Verify counters are correctly incremented
         mockMvc.perform(post("/api/notifications")
                         .header("X-API-KEY", testApiKey)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -298,7 +280,6 @@ class RateLimiterIntegrationTest {
     @Test
     @DisplayName("Should validate notification request fields")
     void shouldValidateNotificationRequest() throws Exception {
-        // Invalid request - missing required fields
         NotificationRequest invalidRequest = new NotificationRequest(
                 null,
                 "",

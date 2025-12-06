@@ -36,7 +36,7 @@ public class Notification {
     private String message;
 
     @Column(name = "status", nullable = false, length = 20)
-    private String status; // PENDING, PROCESSING, SENT, FAILED
+    private String status;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

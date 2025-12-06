@@ -4,24 +4,11 @@ import com.irembo.notifications.infra.db.entity.ClientLimit;
 
 import java.time.Instant;
 
-/**
- * Complete client details including usage statistics, limits, and status.
- * Note: Client information does NOT include apiKeyHash for security reasons.
- */
 public record ClientDetailsResponse(
-    // Client information (without apiKeyHash)
     ClientDto client,
-    
-    // Rate limit configuration
     ClientLimit limit,
-    
-    // Window usage statistics
     WindowUsage windowUsage,
-    
-    // Monthly usage statistics
     MonthlyUsage monthlyUsage,
-    
-    // Current status
     ClientStatus status
 ) {
     public record WindowUsage(

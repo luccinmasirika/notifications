@@ -15,11 +15,9 @@ public class RedisConfig {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
 
-        // Use String serializer for keys
         template.setKeySerializer(new StringRedisSerializer());
         template.setHashKeySerializer(new StringRedisSerializer());
 
-        // Use generic serializer for values
         template.setValueSerializer(new GenericToStringSerializer<>(Object.class));
         template.setHashValueSerializer(new GenericToStringSerializer<>(Object.class));
 

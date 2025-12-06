@@ -7,7 +7,6 @@ import { AuthService } from './auth.service';
 import { ConfigService } from './config.service';
 import { Client, CreateClientRequest, UpdateClientRequest } from '../models/client.model';
 
-// Ensure TestBed is reset before each test
 beforeEach(() => {
   TestBed.resetTestingModule();
 });

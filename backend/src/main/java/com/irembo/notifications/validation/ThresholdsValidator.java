@@ -4,9 +4,6 @@ import com.irembo.notifications.model.dto.ClientLimitRequest;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-/**
- * Validator for threshold constraints.
- */
 public class ThresholdsValidator implements ConstraintValidator<ValidThresholds, ClientLimitRequest> {
 
     @Override
@@ -18,7 +15,6 @@ public class ThresholdsValidator implements ConstraintValidator<ValidThresholds,
         Double softThreshold = request.softThrottleThreshold();
         Double hardThreshold = request.hardRejectThreshold();
 
-        // If both are present, soft must be less than hard
         if (softThreshold != null && hardThreshold != null) {
             if (softThreshold >= hardThreshold) {
                 context.disableDefaultConstraintViolation();

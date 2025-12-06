@@ -1,4 +1,3 @@
--- Create notification table for tracking notification status
 CREATE TABLE notification (
     id BIGSERIAL PRIMARY KEY,
     client_id BIGINT NOT NULL,
@@ -12,12 +11,10 @@ CREATE TABLE notification (
     error_message VARCHAR(1000) NULL
 );
 
--- Create indexes for better query performance
 CREATE INDEX idx_notification_client_id ON notification(client_id);
 CREATE INDEX idx_notification_status ON notification(status);
 CREATE INDEX idx_notification_created_at ON notification(created_at);
 CREATE INDEX idx_notification_client_status ON notification(client_id, status);
 
--- Add comment to table
 COMMENT ON TABLE notification IS 'Stores notification records with their processing status';
 COMMENT ON COLUMN notification.status IS 'Status: PENDING, PROCESSING, SENT, FAILED';

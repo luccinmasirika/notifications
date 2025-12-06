@@ -59,14 +59,12 @@
           </div>
         </div>
 
-        <!-- API Credentials Section -->
         <div class="credentials-section">
           <h3 class="section-title">
             <mat-icon>vpn_key</mat-icon>
             API Credentials
           </h3>
           
-          <!-- New Credentials from Creation -->
           <div class="new-credentials-section" *ngIf="newCredentials">
             <div class="credentials-warning">
               <mat-icon>warning</mat-icon>
@@ -99,7 +97,6 @@
             </div>
           </div>
 
-          <!-- Existing Credentials Management -->
           <div class="existing-credentials-section" *ngIf="!newCredentials">
             <div class="credentials-grid">
               <div class="credential-field">
@@ -143,12 +140,10 @@
               </div>
             </div>
 
-            <!-- Warning when secret is displayed -->
             <div class="credentials-warning" *ngIf="rotatedSecret">
               <mat-icon>warning</mat-icon>
               <span>IMPORTANT: Save this secret now. The old secret is no longer valid and this will not be shown again.</span>
             </div>
-            <!-- Warning when API key is regenerated -->
             <div class="credentials-warning" *ngIf="regeneratedApiKey">
               <mat-icon>warning</mat-icon>
               <span>IMPORTANT: Save this API key now. The old API key is no longer valid and this will not be shown again.</span>
@@ -156,7 +151,6 @@
           </div>
         </div>
 
-        <!-- Account Status Actions -->
         <div class="status-section">
           <h3 class="section-title">
             <mat-icon>settings</mat-icon>

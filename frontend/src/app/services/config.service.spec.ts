@@ -3,7 +3,6 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ConfigService, AppConfig } from './config.service';
 
-// Ensure TestBed is reset before each test
 beforeEach(() => {
   TestBed.resetTestingModule();
 });
@@ -62,7 +61,6 @@ describe('ConfigService', () => {
 
     it('should cache config after first load', (done) => {
       service.getConfig().subscribe(() => {
-        // Second subscription should use cached config
         service.getConfig().subscribe(config => {
           expect(config).toEqual(mockConfig);
           done();
