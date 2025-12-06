@@ -9,6 +9,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.irembo.notifications.config.FilterPathMatcher;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -36,10 +38,18 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
 
     private final AdminService adminService;
     private final ObjectMapper objectMapper;
+    private final FilterPathMatcher filterPathMatcher;
 
-    public APIKeyAuthFilter(AdminService adminService, ObjectMapper objectMapper) {
+    @Value("${app.filter.masking.api-key-visible-chars:4}")
+    private int apiKeyVisibleChars;
+
+    public APIKeyAuthFilter(
+            AdminService adminService, 
+            ObjectMapper objectMapper,
+            FilterPathMatcher filterPathMatcher) {
         this.adminService = adminService;
         this.objectMapper = objectMapper;
+        this.filterPathMatcher = filterPathMatcher;
     }
 
     @Override
@@ -51,7 +61,7 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         // Skip authentication for public endpoints and admin endpoints
-        if (shouldSkipApiKeyAuth(path)) {
+        if (filterPathMatcher.shouldSkip(path)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -70,7 +80,7 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
         Optional<Client> clientOpt = adminService.validateApiKey(apiKey);
 
         if (clientOpt.isEmpty()) {
-            logger.warn("Invalid API key attempted: {}", maskApiKey(apiKey));
+            logger.warn("Invalid API key attempted: {}", maskApiKeyForLogging(apiKey));
             sendUnauthorizedResponse(response, "Invalid API key");
             return;
         }
@@ -132,20 +142,6 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Determine if API key authentication should be skipped for this path.
-     * Skip for: health checks, actuator endpoints, admin endpoints, swagger/openapi, error pages.
-     */
-    private boolean shouldSkipApiKeyAuth(String path) {
-        return path.equals("/health") ||
-               path.equals("/actuator/health") ||
-               path.startsWith("/actuator/") ||
-               path.startsWith("/admin/") ||
-               path.startsWith("/swagger-ui") ||
-               path.startsWith("/v3/api-docs") ||
-               path.startsWith("/api-docs") ||
-               path.startsWith("/error");
-    }
 
     /**
      * Send 401 Unauthorized response with JSON body.
@@ -167,12 +163,12 @@ public class APIKeyAuthFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Mask API key for logging (show only last 4 characters).
+     * Mask API key for logging (show only last N characters).
      */
-    private String maskApiKey(String apiKey) {
-        if (apiKey == null || apiKey.length() <= 4) {
+    private String maskApiKeyForLogging(String apiKey) {
+        if (apiKey == null || apiKey.length() <= apiKeyVisibleChars) {
             return "****";
         }
-        return "****" + apiKey.substring(apiKey.length() - 4);
+        return "****" + apiKey.substring(apiKey.length() - apiKeyVisibleChars);
     }
 }

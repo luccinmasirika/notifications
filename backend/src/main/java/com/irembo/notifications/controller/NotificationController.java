@@ -48,8 +48,8 @@ public class NotificationController {
         String clientName = (String) httpRequest.getAttribute("clientName");
         Long clientId = (Long) httpRequest.getAttribute("clientId");
 
-        // Process notification
-        NotificationResponse response = notificationService.sendNotification(
+        // Queue notification for asynchronous processing
+        NotificationResponse response = notificationService.queueNotification(
                 request,
                 clientId,
                 clientName

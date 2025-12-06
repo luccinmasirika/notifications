@@ -109,7 +109,7 @@ public class ApiKeyValidationService {
             return Optional.empty();
         }
 
-        String expectedHash = calculateHashedApiKey(plainApiKey, client.getClientSalt());
+        String expectedHash = hashApiKeyWithSalt(plainApiKey, client.getClientSalt());
         
         if (expectedHash.equals(client.getApiKeyHash())) {
             if (!client.getActive()) {
@@ -131,7 +131,7 @@ public class ApiKeyValidationService {
     }
 
     /**
-     * Calculate hashed API key using SHA-256 with client salt.
+     * Hash API key using SHA-256 with client salt.
      * 
      * Formula: SHA-256(plainApiKey + clientSalt)
      * 
@@ -139,7 +139,7 @@ public class ApiKeyValidationService {
      * @param clientSalt Unique salt for the client
      * @return SHA-256 hash (64 hex characters)
      */
-    private String calculateHashedApiKey(String plainApiKey, String clientSalt) {
+    private String hashApiKeyWithSalt(String plainApiKey, String clientSalt) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             String input = plainApiKey + clientSalt;
@@ -179,8 +179,8 @@ public class ApiKeyValidationService {
             clientSalt = generateUniqueSalt();
         }
         
-        // Calculate hash with salt
-        String hashedApiKey = calculateHashedApiKey(plainApiKey, clientSalt);
+        // Hash API key with salt
+        String hashedApiKey = hashApiKeyWithSalt(plainApiKey, clientSalt);
         
         return new String[]{hashedApiKey, clientSalt};
     }

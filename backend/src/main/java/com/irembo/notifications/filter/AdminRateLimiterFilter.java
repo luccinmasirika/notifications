@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -23,7 +24,7 @@ import java.util.Map;
  * Rate limiter for admin endpoints.
  * Protects against brute-force attacks on admin authentication.
  *
- * Limits: 100 requests per IP per 5 minutes on /admin/** endpoints
+ * Limits: Configurable requests per IP per configurable window on /admin/** endpoints
  *
  * This prevents:
  * - Brute force password attacks
@@ -36,10 +37,17 @@ public class AdminRateLimiterFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminRateLimiterFilter.class);
 
-    // Configuration
-    private static final int WINDOW_SECONDS = 300; // 5 minutes
-    private static final long MAX_REQUESTS = 100;
-    private static final String RATE_LIMIT_KEY_PREFIX = "admin:ratelimit:";
+    @Value("${app.admin-rate-limiter.window-seconds:300}")
+    private int windowSeconds;
+
+    @Value("${app.admin-rate-limiter.max-requests:100}")
+    private long maxRequests;
+
+    @Value("${app.redis.key-prefix.admin-rate-limit:admin:ratelimit:}")
+    private String rateLimitKeyPrefix;
+
+    @Value("${app.filter.masking.ip-visible-chars:8}")
+    private int ipVisibleChars;
 
     private final RedisCounterRepository redisCounter;
     private final ObjectMapper objectMapper;
@@ -64,28 +72,28 @@ public class AdminRateLimiterFilter extends OncePerRequestFilter {
         }
 
         String clientIp = getClientIp(request);
-        String rateLimitKey = RATE_LIMIT_KEY_PREFIX + clientIp;
+        String rateLimitKey = rateLimitKeyPrefix + clientIp;
 
         // Check and increment counter
-        long count = redisCounter.incrementWindowCounter(rateLimitKey, WINDOW_SECONDS);
+        long count = redisCounter.incrementWindowCounter(rateLimitKey, windowSeconds);
 
         // Add rate limit headers
-        response.setHeader("X-RateLimit-Limit", String.valueOf(MAX_REQUESTS));
-        response.setHeader("X-RateLimit-Remaining", String.valueOf(Math.max(0, MAX_REQUESTS - count)));
+        response.setHeader("X-RateLimit-Limit", String.valueOf(maxRequests));
+        response.setHeader("X-RateLimit-Remaining", String.valueOf(Math.max(0, maxRequests - count)));
 
-        Instant resetTime = redisCounter.getWindowResetTime(WINDOW_SECONDS);
+        Instant resetTime = redisCounter.getWindowResetTime(windowSeconds);
         response.setHeader("X-RateLimit-Reset", String.valueOf(resetTime.getEpochSecond()));
 
         // Check if limit exceeded
-        if (count > MAX_REQUESTS) {
+        if (count > maxRequests) {
             logger.warn("Admin rate limit exceeded for IP: {} (count: {})", maskIp(clientIp), count);
             sendRateLimitExceededResponse(response, resetTime);
             return;
         }
 
         // Log warning when approaching limit (80%)
-        if (count > (MAX_REQUESTS * 0.8)) {
-            logger.info("Admin IP {} approaching rate limit: {}/{}", maskIp(clientIp), count, MAX_REQUESTS);
+        if (count > (maxRequests * 0.8)) {
+            logger.info("Admin IP {} approaching rate limit: {}/{}", maskIp(clientIp), count, maxRequests);
         }
 
         filterChain.doFilter(request, response);
@@ -142,9 +150,9 @@ public class AdminRateLimiterFilter extends OncePerRequestFilter {
             return parts[0] + "." + parts[1] + ".*.*";
         }
 
-        // For IPv6 or other: show first 8 characters
-        if (ip.length() > 8) {
-            return ip.substring(0, 8) + "***";
+        // For IPv6 or other: show first N characters
+        if (ip.length() > ipVisibleChars) {
+            return ip.substring(0, ipVisibleChars) + "***";
         }
 
         return "***";

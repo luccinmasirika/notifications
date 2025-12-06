@@ -1,6 +1,7 @@
 package com.irembo.notifications.service;
 
 import com.irembo.notifications.infra.db.repository.ClientRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
@@ -15,8 +16,15 @@ import java.util.Base64;
 public class ApiKeyGeneratorService {
 
     private static final SecureRandom secureRandom = new SecureRandom();
-    private static final String PREFIX = "LM";
-    private static final int KEY_BYTES = 32; // 256 bits of entropy
+
+    @Value("${app.api-key.prefix:LM}")
+    private String prefix;
+
+    @Value("${app.api-key.key-bytes:32}")
+    private int keyBytes;
+
+    @Value("${app.api-key.max-attempts:10}")
+    private int maxAttempts;
 
     private final ApiKeyHashService apiKeyHashService;
     private final ClientRepository clientRepository;
@@ -37,14 +45,14 @@ public class ApiKeyGeneratorService {
      * @return A secure, URL-safe API key
      */
     public String generateSecureApiKey() {
-        byte[] randomBytes = new byte[KEY_BYTES];
+        byte[] randomBytes = new byte[keyBytes];
         secureRandom.nextBytes(randomBytes);
 
         String encoded = Base64.getUrlEncoder()
                 .withoutPadding()
                 .encodeToString(randomBytes);
 
-        return PREFIX + "-" + encoded;
+        return prefix + "-" + encoded;
     }
 
     /**
@@ -59,15 +67,14 @@ public class ApiKeyGeneratorService {
         String apiKey;
         String hashedKey;
         int attempts = 0;
-        final int MAX_ATTEMPTS = 10;
 
         do {
             apiKey = generateSecureApiKey();
             hashedKey = apiKeyHashService.hashApiKey(apiKey);
             attempts++;
 
-            if (attempts >= MAX_ATTEMPTS) {
-                throw new RuntimeException("Failed to generate unique API key after " + MAX_ATTEMPTS + " attempts");
+            if (attempts >= maxAttempts) {
+                throw new RuntimeException("Failed to generate unique API key after " + maxAttempts + " attempts");
             }
         } while (clientRepository.existsByApiKeyHash(hashedKey));
 
@@ -87,7 +94,7 @@ public class ApiKeyGeneratorService {
         secureRandom.nextBytes(randomBytes);
 
         // Convert to alphanumeric characters (Base32-like)
-        StringBuilder apiKey = new StringBuilder(PREFIX);
+        StringBuilder apiKey = new StringBuilder(prefix);
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
         for (int i = 0; i < randomBytes.length; i++) {

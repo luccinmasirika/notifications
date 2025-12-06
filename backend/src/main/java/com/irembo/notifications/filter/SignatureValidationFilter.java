@@ -2,6 +2,7 @@ package com.irembo.notifications.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.irembo.notifications.infra.db.entity.Client;
+import com.irembo.notifications.config.FilterPathMatcher;
 import com.irembo.notifications.service.CryptoService;
 import com.irembo.notifications.service.HMACSignerService;
 import com.irembo.notifications.service.TimestampValidator;
@@ -53,16 +54,19 @@ public class SignatureValidationFilter extends OncePerRequestFilter {
     private final HMACSignerService hmacSignerService;
     private final TimestampValidator timestampValidator;
     private final ObjectMapper objectMapper;
+    private final FilterPathMatcher filterPathMatcher;
 
     public SignatureValidationFilter(
             CryptoService cryptoService,
             HMACSignerService hmacSignerService,
             TimestampValidator timestampValidator,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            FilterPathMatcher filterPathMatcher) {
         this.cryptoService = cryptoService;
         this.hmacSignerService = hmacSignerService;
         this.timestampValidator = timestampValidator;
         this.objectMapper = objectMapper;
+        this.filterPathMatcher = filterPathMatcher;
     }
 
     @Override
@@ -74,7 +78,7 @@ public class SignatureValidationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         // Skip signature validation for public endpoints
-        if (shouldSkipSignatureValidation(path)) {
+        if (filterPathMatcher.shouldSkip(path)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -184,20 +188,6 @@ public class SignatureValidationFilter extends OncePerRequestFilter {
         request.setAttribute("hmacSignatureValidated", true);
 
         filterChain.doFilter(request, response);
-    }
-
-    /**
-     * Determine if signature validation should be skipped for this path.
-     */
-    private boolean shouldSkipSignatureValidation(String path) {
-        return path.equals("/health") ||
-               path.equals("/actuator/health") ||
-               path.startsWith("/actuator/") ||
-               path.startsWith("/admin/") ||
-               path.startsWith("/swagger-ui") ||
-               path.startsWith("/v3/api-docs") ||
-               path.startsWith("/api-docs") ||
-               path.startsWith("/error");
     }
 
     /**

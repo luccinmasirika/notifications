@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(NotificationController.class)
-@Disabled("Requires PostgreSQL and Redis - run with Docker: docker compose up -d postgres redis")
+@Disabled("Requires PostgreSQL, Redis, and RabbitMQ - run with Docker: docker compose up -d postgres redis rabbitmq")
 class NotificationControllerTest {
 
     @Autowired
@@ -52,7 +52,7 @@ class NotificationControllerTest {
                 "Test Client"
         );
 
-        when(notificationService.sendNotification(any(), anyLong(), anyString()))
+        when(notificationService.queueNotification(any(), anyLong(), anyString()))
                 .thenReturn(expectedResponse);
 
         // When & Then
@@ -83,7 +83,7 @@ class NotificationControllerTest {
                 "Test Client"
         );
 
-        when(notificationService.sendNotification(any(), anyLong(), anyString()))
+        when(notificationService.queueNotification(any(), anyLong(), anyString()))
                 .thenReturn(expectedResponse);
 
         // When & Then
@@ -217,7 +217,7 @@ class NotificationControllerTest {
                 "Test Client"
         );
 
-        when(notificationService.sendNotification(any(), anyLong(), anyString()))
+        when(notificationService.queueNotification(any(), anyLong(), anyString()))
                 .thenReturn(expectedResponse);
 
         // When & Then
@@ -286,7 +286,7 @@ class NotificationControllerTest {
                 "Test Client"
         );
 
-        when(notificationService.sendNotification(any(), anyLong(), anyString()))
+        when(notificationService.queueNotification(any(), anyLong(), anyString()))
                 .thenReturn(expectedResponse);
 
         // When & Then

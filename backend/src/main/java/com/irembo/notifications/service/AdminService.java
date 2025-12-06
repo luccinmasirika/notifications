@@ -7,8 +7,10 @@ import com.irembo.notifications.infra.db.repository.ClientRepository;
 import com.irembo.notifications.infra.redis.RedisCounterRepository;
 import com.irembo.notifications.model.dto.ClientDetailsResponse;
 import com.irembo.notifications.model.dto.ClientDto;
+import com.irembo.notifications.model.dto.CreateClientResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,24 @@ import java.util.Optional;
 public class AdminService {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminService.class);
+
+    @Value("${app.default-client-limits.window-size-seconds:60}")
+    private int defaultWindowSizeSeconds;
+
+    @Value("${app.default-client-limits.max-requests-per-window:100}")
+    private int defaultMaxRequestsPerWindow;
+
+    @Value("${app.default-client-limits.monthly-quota:10000}")
+    private int defaultMonthlyQuota;
+
+    @Value("${app.default-client-limits.soft-throttle-threshold:0.80}")
+    private double defaultSoftThrottleThreshold;
+
+    @Value("${app.default-client-limits.hard-reject-threshold:1.00}")
+    private double defaultHardRejectThreshold;
+
+    @Value("${app.api-secret.secret-bytes:64}")
+    private int apiSecretBytes;
 
     private final ClientRepository clientRepository;
     private final ClientLimitRepository clientLimitRepository;
@@ -348,11 +368,12 @@ public class AdminService {
      * @param name Client name
      * @param priority Priority level
      * @param active Active status
-     * @return Array with [Client, plainApiSecret] - secret should be shown once to user
+     * @return CreateClientResult containing the created client and plain text API secret
+     *         The API secret should be shown to the user once and then stored securely
      */
     @Transactional
     @CacheEvict(value = {"clientConfigs", "apiKeyValidation"}, allEntries = true)
-    public Object[] createClient(String apiKey, String name, Integer priority, Boolean active) {
+    public CreateClientResult createClient(String apiKey, String name, Integer priority, Boolean active) {
         // Hash API key with SHA-256 + unique salt
         String[] hashAndSalt = apiKeyValidationService.hashApiKeyForStorage(apiKey, null);
         String hashedKey = hashAndSalt[0]; // SHA-256(apiKey + clientSalt)
@@ -380,7 +401,7 @@ public class AdminService {
         createDefaultClientLimits(saved.getId());
         logger.info("Created default rate limits for client {} (ID: {})", name, saved.getId());
 
-        return new Object[]{saved, apiSecret};
+        return new CreateClientResult(saved, apiSecret);
     }
 
     /**
@@ -397,11 +418,11 @@ public class AdminService {
     private void createDefaultClientLimits(Long clientId) {
         ClientLimit defaultLimit = new ClientLimit();
         defaultLimit.setClientId(clientId);
-        defaultLimit.setWindowSizeSeconds(60); // 1 minute window
-        defaultLimit.setMaxRequestsPerWindow(100); // 100 requests per minute
-        defaultLimit.setMonthlyQuota(10000); // 10,000 requests per month
-        defaultLimit.setSoftThrottleThreshold(0.80); // 80% threshold
-        defaultLimit.setHardRejectThreshold(1.00); // 100% threshold
+        defaultLimit.setWindowSizeSeconds(defaultWindowSizeSeconds);
+        defaultLimit.setMaxRequestsPerWindow(defaultMaxRequestsPerWindow);
+        defaultLimit.setMonthlyQuota(defaultMonthlyQuota);
+        defaultLimit.setSoftThrottleThreshold(defaultSoftThrottleThreshold);
+        defaultLimit.setHardRejectThreshold(defaultHardRejectThreshold);
 
         clientLimitRepository.save(defaultLimit);
     }
@@ -543,7 +564,7 @@ public class AdminService {
      * @return Secure API secret
      */
     private String generateSecureApiSecret() {
-        byte[] randomBytes = new byte[64]; // 512 bits of entropy
+        byte[] randomBytes = new byte[apiSecretBytes]; // Configurable bits of entropy
         java.security.SecureRandom secureRandom = new java.security.SecureRandom();
         secureRandom.nextBytes(randomBytes);
         

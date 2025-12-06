@@ -11,6 +11,7 @@ import com.irembo.notifications.model.dto.ClientDto;
 import com.irembo.notifications.model.dto.ClientLimitRequest;
 import com.irembo.notifications.model.dto.ClientResponse;
 import com.irembo.notifications.model.dto.CreateClientRequest;
+import com.irembo.notifications.model.dto.CreateClientResult;
 import com.irembo.notifications.model.dto.SystemLimitRequest;
 import com.irembo.notifications.model.dto.UpdateClientRequest;
 import com.irembo.notifications.service.AdminService;
@@ -23,6 +24,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +43,12 @@ import java.util.Optional;
 public class AdminController {
 
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
+
+    @Value("${app.pagination.default-size:20}")
+    private int defaultPageSize;
+
+    @Value("${app.pagination.max-size:100}")
+    private int maxPageSize;
 
     private final ClientRepository clientRepository;
     private final ClientLimitRepository clientLimitRepository;
@@ -85,12 +93,12 @@ public class AdminController {
     @GetMapping("/clients/page")
     public ResponseEntity<Page<ClientDto>> getClientsPaginated(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "${app.pagination.default-size:20}") int size,
             @RequestParam(defaultValue = "id") String sort,
             @RequestParam(defaultValue = "ASC") String direction) {
 
-        // Limit max page size to 100
-        size = Math.min(size, 100);
+        // Limit max page size
+        size = Math.min(size, maxPageSize);
 
         Sort.Direction sortDirection = direction.equalsIgnoreCase("DESC")
                 ? Sort.Direction.DESC
@@ -189,16 +197,16 @@ public class AdminController {
             apiKey = apiKeyGeneratorService.generateUniqueApiKey();
         }
         
-        // Create client with HMAC authentication (returns [Client, apiSecret])
-        Object[] result = adminService.createClient(
+        // Create client with HMAC authentication
+        CreateClientResult result = adminService.createClient(
             apiKey,
             request.name(),
             request.priority(),
             request.active()
         );
         
-        Client saved = (Client) result[0];
-        String apiSecret = (String) result[1];
+        Client saved = result.client();
+        String apiSecret = result.apiSecret();
         
         // Return API key and secret in response - this is the ONLY time they will be visible
         ClientResponse response = ClientResponse.withApiKeyAndSecret(saved, apiKey, apiSecret);

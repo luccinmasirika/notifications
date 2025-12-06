@@ -15,6 +15,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
+import com.irembo.notifications.config.FilterPathMatcher;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -31,16 +33,25 @@ public class RateLimiterFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(RateLimiterFilter.class);
 
     private static final String API_KEY_HEADER = "X-API-KEY";
-    private static final int JITTER_MIN_MS = 50;
-    private static final int JITTER_MAX_MS = 200;
 
     private final RateLimiterService rateLimiterService;
     private final ObjectMapper objectMapper;
+    private final FilterPathMatcher filterPathMatcher;
     private final Random random;
 
-    public RateLimiterFilter(RateLimiterService rateLimiterService, ObjectMapper objectMapper) {
+    @Value("${app.rate-limiter.jitter.min-ms:50}")
+    private int jitterMinMs;
+
+    @Value("${app.rate-limiter.jitter.max-ms:200}")
+    private int jitterMaxMs;
+
+    public RateLimiterFilter(
+            RateLimiterService rateLimiterService, 
+            ObjectMapper objectMapper,
+            FilterPathMatcher filterPathMatcher) {
         this.rateLimiterService = rateLimiterService;
         this.objectMapper = objectMapper;
+        this.filterPathMatcher = filterPathMatcher;
         this.random = new Random();
     }
 
@@ -52,7 +63,7 @@ public class RateLimiterFilter extends OncePerRequestFilter {
 
         // Skip rate limiting for health check and other non-API endpoints
         String path = request.getRequestURI();
-        if (shouldSkipRateLimiting(path)) {
+        if (filterPathMatcher.shouldSkip(path)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -64,8 +75,8 @@ public class RateLimiterFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Extract channel from request (default to "GENERAL")
-        String channel = extractChannel(request);
+        // Extract notification channel from request (default to "GENERAL")
+        String channel = extractNotificationChannel(request);
 
         // Check rate limits
         RateDecision decision = rateLimiterService.checkAndConsume(apiKey, channel);
@@ -87,26 +98,12 @@ public class RateLimiterFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Determine if rate limiting should be skipped for this path.
-     * Skip for: health checks, actuator endpoints, admin endpoints, swagger/openapi, error pages.
-     */
-    private boolean shouldSkipRateLimiting(String path) {
-        return path.equals("/health") ||
-               path.equals("/actuator/health") ||
-               path.startsWith("/actuator/") ||
-               path.startsWith("/admin/") ||
-               path.startsWith("/swagger-ui") ||
-               path.startsWith("/v3/api-docs") ||
-               path.startsWith("/api-docs") ||
-               path.startsWith("/error");
-    }
 
     /**
      * Extract notification channel from request.
      * This could come from query param, request body, or default to "GENERAL".
      */
-    private String extractChannel(HttpServletRequest request) {
+    private String extractNotificationChannel(HttpServletRequest request) {
         String channel = request.getParameter("channel");
         if (channel != null && !channel.isBlank()) {
             return channel.toUpperCase();
@@ -157,7 +154,7 @@ public class RateLimiterFilter extends OncePerRequestFilter {
      * Handle soft throttle - add jitter delay.
      */
     private void handleSoftThrottle(RateDecision decision) {
-        int jitterMs = JITTER_MIN_MS + random.nextInt(JITTER_MAX_MS - JITTER_MIN_MS);
+        int jitterMs = jitterMinMs + random.nextInt(jitterMaxMs - jitterMinMs);
 
         try {
             logger.info("Soft throttle applied: {}ms delay, usage: {}%", jitterMs, String.format("%.2f", decision.usagePercent()));

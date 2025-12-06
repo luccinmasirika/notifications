@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
@@ -43,6 +44,15 @@ public class CacheConfig {
 
     @Value("${cache.type:redis}")
     private String cacheType;
+
+    @Value("${app.cache.api-key-validation-ttl-hours:24}")
+    private int apiKeyValidationTtlHours;
+
+    @Value("${app.cache.default-ttl-minutes:5}")
+    private int defaultTtlMinutes;
+
+    @Value("${app.cache.caffeine-max-size:500}")
+    private int caffeineMaxSize;
 
     /**
      * Primary cache manager bean.
@@ -96,18 +106,18 @@ public class CacheConfig {
     private CacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
         GenericJackson2JsonRedisSerializer serializer = createRedisSerializer();
         
-        // Default config: 5 minutes for most caches
+        // Default config: configurable TTL for most caches
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(5))
+                .entryTtl(Duration.ofMinutes(defaultTtlMinutes))
                 .serializeValuesWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(serializer)
                 )
                 .disableCachingNullValues();
 
-        // Special config for API key validation: 24 hours TTL
+        // Special config for API key validation: configurable TTL (default 24 hours)
         // This is critical for 100M+ users scale
         RedisCacheConfiguration apiKeyValidationConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofHours(24))
+                .entryTtl(Duration.ofHours(apiKeyValidationTtlHours))
                 .serializeValuesWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(serializer)
                 )
@@ -139,8 +149,8 @@ public class CacheConfig {
     private CacheManager caffeineCacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager("clientConfigs", "systemLimits", "apiKeyValidation");
         cacheManager.setCaffeine(Caffeine.newBuilder()
-                .maximumSize(500)
-                .expireAfterWrite(5, TimeUnit.MINUTES)
+                .maximumSize(caffeineMaxSize)
+                .expireAfterWrite(defaultTtlMinutes, TimeUnit.MINUTES)
                 .recordStats());
         return cacheManager;
     }
