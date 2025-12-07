@@ -1,0 +1,34 @@
+{
+  "POST /api/notifications" : {
+    "transaction" : "POST /api/notifications",
+    "sampleCount" : 169,
+    "errorCount" : 137,
+    "errorPct" : 81.06509,
+    "meanResTime" : 85.35502958579882,
+    "medianResTime" : 46.0,
+    "minResTime" : 9.0,
+    "maxResTime" : 510.0,
+    "pct1ResTime" : 215.0,
+    "pct2ResTime" : 279.5,
+    "pct3ResTime" : 436.5000000000012,
+    "throughput" : 5.849572531238102,
+    "receivedKBytesPerSec" : 4.734626213613236,
+    "sentKBytesPerSec" : 2.5221076092035584
+  },
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 169,
+    "errorCount" : 137,
+    "errorPct" : 81.06509,
+    "meanResTime" : 85.35502958579882,
+    "medianResTime" : 46.0,
+    "minResTime" : 9.0,
+    "maxResTime" : 510.0,
+    "pct1ResTime" : 215.0,
+    "pct2ResTime" : 279.5,
+    "pct3ResTime" : 436.5000000000012,
+    "throughput" : 5.849572531238102,
+    "receivedKBytesPerSec" : 4.734626213613236,
+    "sentKBytesPerSec" : 2.5221076092035584
+  }
+}

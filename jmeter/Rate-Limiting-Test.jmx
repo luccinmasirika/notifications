@@ -28,11 +28,11 @@
           </elementProp>
           <elementProp name="API_KEY" elementType="Argument">
             <stringProp name="Argument.name">API_KEY</stringProp>
-            <stringProp name="Argument.value">${__P(api.key,LMirg1mq_LQXNQJ5H4ZC7WH5ZMzNTKRJSKvQhG2XHfU)}</stringProp>
+            <stringProp name="Argument.value">${__P(api.key,LM-qkVRYb8UNVTcZcQc_i1Y0oxL2dALqNMt6qL8wCc8e7o)}</stringProp>
           </elementProp>
           <elementProp name="API_SECRET" elementType="Argument">
             <stringProp name="Argument.name">API_SECRET</stringProp>
-            <stringProp name="Argument.value">${__P(api.secret,W0yVOb0mHJUm8C4-M34HXHV3nNWP7UUpWwVwlO6oVfbGIvRaODN7_1RVqyUeHl8mPFvRUkNuW5Rm2YXnZGxMaA)}</stringProp>
+            <stringProp name="Argument.value">${__P(api.secret,ZGqBk_5Qpidky55aa9iPo9hf9aIxc-YVM8tZOBEsNJnHvjDFJLNYwY5qEHUhsSt1zceBHjiZtyV9-rUoCLXXaQ)}</stringProp>
           </elementProp>
           <elementProp name="RATE_LIMIT" elementType="Argument">
             <stringProp name="Argument.name">RATE_LIMIT</stringProp>
