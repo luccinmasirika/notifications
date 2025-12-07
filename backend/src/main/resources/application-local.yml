@@ -17,4 +17,4 @@ cache:
   type: caffeine
 
 cors:
-  allowed-origins: "http://localhost,http://localhost:1015,http://localhost:4200,http://localhost:8080"
+  allowed-origins: "http://localhost,http://localhost:1015,http://localhost:1315,http://localhost:4200,http://localhost:8080"

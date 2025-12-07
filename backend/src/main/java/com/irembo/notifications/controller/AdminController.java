@@ -65,6 +65,15 @@ public class AdminController {
         this.apiKeyGeneratorService = apiKeyGeneratorService;
     }
 
+    @GetMapping("/clients")
+    public ResponseEntity<List<ClientDto>> getClients() {
+        List<Client> clients = clientRepository.findAll();
+        List<ClientDto> clientDtos = clients.stream()
+                .map(ClientDto::fromClient)
+                .toList();
+        return ResponseEntity.ok(clientDtos);
+    }
+
     @GetMapping("/clients/page")
     public ResponseEntity<Page<ClientDto>> getClientsPaginated(
             @RequestParam(defaultValue = "0") int page,

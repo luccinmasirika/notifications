@@ -34,3 +34,4 @@ class NotificationEntityTest {
         assertEquals(originalCreatedAt, notification.getCreatedAt());
     }
 }
+

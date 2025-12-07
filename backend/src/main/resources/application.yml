@@ -129,7 +129,7 @@ app:
       description: ${APP_OPENAPI_SERVER_DESCRIPTION:Development server}
 
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost,http://localhost:1015,http://localhost:4200,http://localhost:8080}
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost,http://localhost:1015,http://localhost:1315,http://localhost:4200,http://localhost:8080}
 
 management:
   endpoints:

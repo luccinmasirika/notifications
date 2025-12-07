@@ -247,3 +247,4 @@ class AdminControllerWebMvcTest {
                 .andExpect(jsonPath("$.error").exists());
     }
 }
+

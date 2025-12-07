@@ -50,3 +50,4 @@ class NotificationRequestValidationTest {
         assertTrue(violations.iterator().next().getMessage().contains("must not exceed 500"));
     }
 }
+

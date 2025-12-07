@@ -35,7 +35,4 @@ def signature = Base64.getEncoder().encodeToString(signatureBytes)
 // Store signature for use in request headers
 vars.put("signature", signature)
 
-// Log for debugging (comment out in production)
-// log.info("Timestamp: " + timestamp)
-// log.info("Payload: " + payload)
-// log.info("Signature: " + signature)
+
