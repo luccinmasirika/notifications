@@ -1,0 +1,27 @@
+# JMeter Results
+results/*.jtl
+results/*.log
+results/*.csv
+results/html-report-*
+results/*.xml
+
+# Keep the results directory but ignore contents
+!results/.gitkeep
+
+# JMeter log files
+jmeter.log
+jmeter*.log
+
+# Temporary files
+*.tmp
+*.temp
+~*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.iml

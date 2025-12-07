@@ -227,59 +227,6 @@ services:
     networks:
       - notifications-network
 
-  # Instance 3 du Backend (Ajouté pour tester le scaling horizontal)
-  backend-3:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: notifications-backend-3
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notifications
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: guest
-      SPRING_RABBITMQ_PASSWORD: guest
-      ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: admin123
-      CORS_ALLOWED_ORIGINS: "http://localhost,http://localhost:1015,http://localhost:4200,http://localhost:8080"
-      APP_CRYPTO_MASTER_KEY: ${APP_CRYPTO_MASTER_KEY:-uo0mWscOs31YO4l7nxkswP6bvKghQr01jTyL+VrwwjA=}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:1310/actuator/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    labels:
-      - "traefik.enable=true"
-      
-      # Routing Rules (Même règle = même routeur = Load Balancing automatique avec les autres backends)
-      - "traefik.http.routers.backend.rule=PathPrefix(`/api`) || PathPrefix(`/admin`) || PathPrefix(`/actuator`) || PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`)"
-      - "traefik.http.routers.backend.entrypoints=web"
-      - "traefik.http.services.backend-service.loadbalancer.server.port=1310"
-      
-      # Health Checks (Même config que les autres backends, partagé via service name)
-      - "traefik.http.services.backend-service.loadbalancer.healthcheck.path=/actuator/health"
-      - "traefik.http.services.backend-service.loadbalancer.healthcheck.interval=10s"
-      - "traefik.http.services.backend-service.loadbalancer.healthcheck.timeout=3s"
-      - "traefik.http.services.backend-service.loadbalancer.healthcheck.scheme=http"
-      
-      # Middlewares (Même chaîne que les autres backends - middlewares définis dans backend-1)
-      # CORS doit être en premier pour gérer les requêtes OPTIONS preflight
-      - "traefik.http.routers.backend.middlewares=cors@docker,security-headers@docker,compress@docker,retry@docker,circuit-breaker@docker"
-    networks:
-      - notifications-network
-
   frontend:
     build:
       context: ./frontend
