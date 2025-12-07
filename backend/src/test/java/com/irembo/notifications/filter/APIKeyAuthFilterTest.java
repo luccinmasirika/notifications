@@ -141,9 +141,13 @@ class APIKeyAuthFilterTest {
         activeClient.setApiKeyHash(hashService.hashApiKey("valid-key"));
         activeClient.setName("Test Client");
         activeClient.setActive(true);
+        activeClient.setAuthMethod("HMAC");
+        activeClient.setStatus("ACTIVE");
 
         when(request.getRequestURI()).thenReturn("/api/notifications");
         when(request.getHeader("X-API-KEY")).thenReturn("valid-key");
+        when(request.getHeader("X-SIGNATURE")).thenReturn("test-signature");
+        when(request.getHeader("X-TIMESTAMP")).thenReturn(String.valueOf(System.currentTimeMillis()));
         when(adminService.validateApiKey("valid-key")).thenReturn(Optional.of(activeClient));
 
         filter.doFilterInternal(request, response, filterChain);

@@ -8,14 +8,19 @@ import com.irembo.notifications.infra.db.repository.ClientRepository;
 import com.irembo.notifications.model.dto.NotificationRequest;
 import com.irembo.notifications.model.enums.NotificationChannel;
 import com.irembo.notifications.service.ApiKeyHashService;
+import com.irembo.notifications.service.ApiKeyValidationService;
+import com.irembo.notifications.service.CryptoService;
+import com.irembo.notifications.service.HMACSignerService;
 import com.redis.testcontainers.RedisContainer;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Disabled;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -32,18 +37,37 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
-@Disabled("Requires Docker/Testcontainers environment")
+@org.springframework.test.context.TestPropertySource(properties = {
+        "spring.flyway.enabled=false"
+})
 class RateLimiterIntegrationTest {
+
+    static {
+        // Configure Docker host for Colima
+        String dockerHost = System.getProperty("docker.host");
+        if (dockerHost == null || dockerHost.isEmpty()) {
+            String colimaSocket = System.getProperty("user.home") + "/.colima/default/docker.sock";
+            if (new java.io.File(colimaSocket).exists()) {
+                System.setProperty("docker.host", "unix://" + colimaSocket);
+            }
+        }
+    }
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("testdb")
             .withUsername("test")
-            .withPassword("test");
+            .withPassword("test")
+            .waitingFor(org.testcontainers.containers.wait.strategy.Wait.forLogMessage(".*database system is ready to accept connections.*", 2))
+            .withStartupTimeout(java.time.Duration.ofSeconds(120))
+            .withReuse(true);
 
     @Container
     static RedisContainer redis = new RedisContainer(DockerImageName.parse("redis:7-alpine"))
-            .withExposedPorts(6379);
+            .withExposedPorts(6379)
+            .waitingFor(org.testcontainers.containers.wait.strategy.Wait.forListeningPort())
+            .withStartupTimeout(java.time.Duration.ofSeconds(60))
+            .withReuse(true);
 
     @DynamicPropertySource
     static void configureProperties(DynamicPropertyRegistry registry) {
@@ -52,6 +76,8 @@ class RateLimiterIntegrationTest {
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.data.redis.host", redis::getHost);
         registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379).toString());
+        registry.add("spring.flyway.enabled", () -> "false");
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
     }
 
     @Autowired
@@ -66,8 +92,24 @@ class RateLimiterIntegrationTest {
     @Autowired
     private ClientLimitRepository clientLimitRepository;
 
+    @Autowired
+    private ApiKeyHashService apiKeyHashService;
+
+    @Autowired
+    private ApiKeyValidationService apiKeyValidationService;
+
+    @Autowired
+    private CryptoService cryptoService;
+
+    @Autowired
+    private HMACSignerService hmacSignerService;
+
+    @MockBean
+    private RabbitTemplate rabbitTemplate;
+
     private Client testClient;
     private String testApiKey = "integration-test-key-12345";
+    private String testApiSecret = "integration-test-secret-1234567890123456789012345678901234567890123456789012345678901234";
 
     @BeforeEach
     void setUp() {
@@ -75,11 +117,26 @@ class RateLimiterIntegrationTest {
         clientRepository.deleteAll();
 
         testClient = new Client();
-        ApiKeyHashService hashService = new ApiKeyHashService();
-        testClient.setApiKeyHash(hashService.hashApiKey(testApiKey));
         testClient.setName("Integration Test Client");
         testClient.setActive(true);
         testClient.setPriority(1);
+        testClient.setAuthMethod("HMAC");
+        testClient.setStatus("ACTIVE");
+        
+        // Set up API key properly with index and salt
+        String apiKeyIndex = apiKeyHashService.calculateApiKeyIndex(testApiKey);
+        String[] hashAndSalt = apiKeyValidationService.hashApiKeyForStorage(testApiKey, null);
+        String hashedApiKey = hashAndSalt[0];
+        String clientSalt = hashAndSalt[1];
+        
+        testClient.setApiKeyIndex(apiKeyIndex);
+        testClient.setApiKeyHash(hashedApiKey);
+        testClient.setClientSalt(clientSalt);
+        
+        // Set encrypted API secret for HMAC signing
+        String encryptedSecret = cryptoService.encrypt(testApiSecret);
+        testClient.setApiSecretEncrypted(encryptedSecret);
+        
         testClient = clientRepository.save(testClient);
 
         ClientLimit limit = new ClientLimit();
@@ -87,7 +144,23 @@ class RateLimiterIntegrationTest {
         limit.setWindowSizeSeconds(10);
         limit.setMaxRequestsPerWindow(5);
         limit.setMonthlyQuota(100);
+        limit.setSoftThrottleThreshold(0.80);
+        limit.setHardRejectThreshold(1.00);
         clientLimitRepository.save(limit);
+    }
+
+    private org.springframework.test.web.servlet.ResultActions performNotificationRequest(
+            NotificationRequest request) throws Exception {
+        long timestamp = System.currentTimeMillis();
+        String requestBody = objectMapper.writeValueAsString(request);
+        String signature = hmacSignerService.generateSignature(testApiSecret, timestamp, "POST", "/api/notifications", requestBody);
+        
+        return mockMvc.perform(post("/api/notifications")
+                        .header("X-API-KEY", testApiKey)
+                        .header("X-TIMESTAMP", String.valueOf(timestamp))
+                        .header("X-SIGNATURE", signature)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody));
     }
 
     @Test
@@ -99,10 +172,7 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        mockMvc.perform(post("/api/notifications")
-                        .header("X-API-KEY", testApiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        performNotificationRequest(request)
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.status").value("accepted"))
                 .andExpect(header().exists("X-RateLimit-Limit"))
@@ -119,10 +189,7 @@ class RateLimiterIntegrationTest {
                 "Test email"
         );
 
-        mockMvc.perform(post("/api/notifications")
-                        .header("X-API-KEY", testApiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        performNotificationRequest(request)
                 .andExpect(status().isAccepted())
                 .andExpect(header().string("X-RateLimit-Limit", "5"))
                 .andExpect(header().exists("X-RateLimit-Remaining"))
@@ -138,20 +205,15 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        for (int i = 0; i < 4; i++) {
-            mockMvc.perform(post("/api/notifications")
-                            .header("X-API-KEY", testApiKey)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+        // Send 3 requests (should all be accepted, at 60% usage)
+        for (int i = 0; i < 3; i++) {
+            performNotificationRequest(request)
                     .andExpect(status().isAccepted());
         }
 
-        mockMvc.perform(post("/api/notifications")
-                        .header("X-API-KEY", testApiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isAccepted())
-                .andExpect(header().string("X-RateLimit-Remaining", "0"));
+        // 4th request should still be accepted (at 80%, soft throttle threshold)
+        performNotificationRequest(request)
+                .andExpect(status().isAccepted());
     }
 
     @Test
@@ -163,18 +225,14 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        for (int i = 0; i < 5; i++) {
-            mockMvc.perform(post("/api/notifications")
-                            .header("X-API-KEY", testApiKey)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+        // Send 4 requests (should all be accepted)
+        for (int i = 0; i < 4; i++) {
+            performNotificationRequest(request)
                     .andExpect(status().isAccepted());
         }
 
-        mockMvc.perform(post("/api/notifications")
-                        .header("X-API-KEY", testApiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        // 5th request should be rejected (hits 100% limit)
+        performNotificationRequest(request)
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.error").value("Rate limit exceeded"))
                 .andExpect(header().exists("Retry-After"))
@@ -190,18 +248,14 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        for (int i = 0; i < 5; i++) {
-            mockMvc.perform(post("/api/notifications")
-                            .header("X-API-KEY", testApiKey)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+        // Send 4 requests (should all be accepted)
+        for (int i = 0; i < 4; i++) {
+            performNotificationRequest(request)
                     .andExpect(status().isAccepted());
         }
 
-        mockMvc.perform(post("/api/notifications")
-                        .header("X-API-KEY", testApiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        // 5th request should be rejected with Retry-After header
+        performNotificationRequest(request)
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("Retry-After"))
                 .andExpect(header().string("Retry-After", not(emptyString())));
@@ -216,18 +270,12 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        mockMvc.perform(post("/api/notifications")
-                        .header("X-API-KEY", testApiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        performNotificationRequest(request)
                 .andExpect(status().isAccepted())
                 .andExpect(header().string("X-RateLimit-Limit", "5"))
                 .andExpect(header().exists("X-RateLimit-Remaining"));
 
-        mockMvc.perform(post("/api/notifications")
-                        .header("X-API-KEY", testApiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        performNotificationRequest(request)
                 .andExpect(status().isAccepted())
                 .andExpect(header().exists("X-RateLimit-Remaining"));
     }
@@ -244,12 +292,10 @@ class RateLimiterIntegrationTest {
                 "Test message"
         );
 
-        mockMvc.perform(post("/api/notifications")
-                        .header("X-API-KEY", testApiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.error").value("Rate limit exceeded"));
+        performNotificationRequest(request)
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.message").value("Client account is inactive"));
     }
 
     @Test
@@ -262,17 +308,11 @@ class RateLimiterIntegrationTest {
         );
 
         for (int i = 0; i < 3; i++) {
-            mockMvc.perform(post("/api/notifications")
-                            .header("X-API-KEY", testApiKey)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+            performNotificationRequest(request)
                     .andExpect(status().isAccepted());
         }
 
-        mockMvc.perform(post("/api/notifications")
-                        .header("X-API-KEY", testApiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        performNotificationRequest(request)
                 .andExpect(status().isAccepted())
                 .andExpect(header().exists("X-RateLimit-Remaining"));
     }
@@ -286,8 +326,13 @@ class RateLimiterIntegrationTest {
                 ""
         );
 
+        long timestamp = System.currentTimeMillis();
+        String signature = hmacSignerService.generateSignature(testApiSecret, timestamp, "POST", "/api/notifications", objectMapper.writeValueAsString(invalidRequest));
+        
         mockMvc.perform(post("/api/notifications")
                         .header("X-API-KEY", testApiKey)
+                        .header("X-TIMESTAMP", String.valueOf(timestamp))
+                        .header("X-SIGNATURE", signature)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest());

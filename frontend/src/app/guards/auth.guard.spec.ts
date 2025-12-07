@@ -19,20 +19,22 @@ describe('AuthGuard', () => {
       isLoggedIn: vi.fn()
     };
     const routerSpy = {
-      navigate: vi.fn()
+      navigate: vi.fn(),
+      createUrlTree: vi.fn(),
+      serializeUrl: vi.fn()
     };
 
     TestBed.configureTestingModule({
       providers: [
-        AuthGuard,
+        { provide: AuthGuard, useClass: AuthGuard },
         { provide: AuthService, useValue: authServiceSpy },
         { provide: Router, useValue: routerSpy }
       ]
     });
 
-    guard = TestBed.inject(AuthGuard);
     authService = TestBed.inject(AuthService) as any;
     router = TestBed.inject(Router) as any;
+    guard = TestBed.inject(AuthGuard);
   });
 
   it('should be created', () => {

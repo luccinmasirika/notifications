@@ -1,0 +1,144 @@
+package com.irembo.notifications.service;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Base64;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+@ExtendWith(MockitoExtension.class)
+class CryptoServiceTest {
+
+    private CryptoService cryptoService;
+    private String testMasterKey;
+
+    @BeforeEach
+    void setUp() {
+        // Generate a valid 32-byte master key for testing
+        testMasterKey = CryptoService.generateMasterKeyBase64();
+        cryptoService = new CryptoService(testMasterKey);
+    }
+
+    @Test
+    @DisplayName("Should encrypt and decrypt secret successfully")
+    void shouldEncryptAndDecryptSecretSuccessfully() {
+        String plainSecret = "test-secret-12345678901234567890123456789012";
+
+        String encrypted = cryptoService.encrypt(plainSecret);
+        String decrypted = cryptoService.decrypt(encrypted);
+
+        assertThat(encrypted).isNotNull();
+        assertThat(encrypted).isNotEqualTo(plainSecret);
+        assertThat(decrypted).isEqualTo(plainSecret);
+    }
+
+    @Test
+    @DisplayName("Should generate different encrypted values for same input")
+    void shouldGenerateDifferentEncryptedValuesForSameInput() {
+        String plainSecret = "test-secret";
+
+        String encrypted1 = cryptoService.encrypt(plainSecret);
+        String encrypted2 = cryptoService.encrypt(plainSecret);
+
+        assertThat(encrypted1).isNotEqualTo(encrypted2);
+        
+        // But both should decrypt to the same value
+        assertThat(cryptoService.decrypt(encrypted1)).isEqualTo(plainSecret);
+        assertThat(cryptoService.decrypt(encrypted2)).isEqualTo(plainSecret);
+    }
+
+    @Test
+    @DisplayName("Should throw exception when encrypting null secret")
+    void shouldThrowExceptionWhenEncryptingNullSecret() {
+        assertThatThrownBy(() -> cryptoService.encrypt(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Secret cannot be null or blank");
+    }
+
+    @Test
+    @DisplayName("Should throw exception when encrypting blank secret")
+    void shouldThrowExceptionWhenEncryptingBlankSecret() {
+        assertThatThrownBy(() -> cryptoService.encrypt("   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Secret cannot be null or blank");
+    }
+
+    @Test
+    @DisplayName("Should throw exception when decrypting null secret")
+    void shouldThrowExceptionWhenDecryptingNullSecret() {
+        assertThatThrownBy(() -> cryptoService.decrypt(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Encrypted secret cannot be null or blank");
+    }
+
+    @Test
+    @DisplayName("Should throw exception when decrypting invalid format")
+    void shouldThrowExceptionWhenDecryptingInvalidFormat() {
+        assertThatThrownBy(() -> cryptoService.decrypt("invalid-format"))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Decryption failed");
+    }
+
+    @Test
+    @DisplayName("Should throw exception when decrypting too short ciphertext")
+    void shouldThrowExceptionWhenDecryptingTooShortCiphertext() {
+        String shortCipher = Base64.getEncoder().encodeToString("short".getBytes());
+        assertThatThrownBy(() -> cryptoService.decrypt(shortCipher))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Decryption failed");
+    }
+
+    @Test
+    @DisplayName("Should handle non-empty string encryption")
+    void shouldHandleNonEmptyStringEncryption() {
+        String plainSecret = "test";
+        String encrypted = cryptoService.encrypt(plainSecret);
+        String decrypted = cryptoService.decrypt(encrypted);
+        assertThat(decrypted).isEqualTo(plainSecret);
+    }
+
+    @Test
+    @DisplayName("Should handle long secret encryption")
+    void shouldHandleLongSecretEncryption() {
+        String longSecret = "a".repeat(1000);
+        String encrypted = cryptoService.encrypt(longSecret);
+        String decrypted = cryptoService.decrypt(encrypted);
+        assertThat(decrypted).isEqualTo(longSecret);
+    }
+
+    @Test
+    @DisplayName("Should generate master key base64")
+    void shouldGenerateMasterKeyBase64() {
+        String masterKey = CryptoService.generateMasterKeyBase64();
+        assertThat(masterKey).isNotNull();
+        assertThat(masterKey).isNotEmpty();
+        
+        // Decode and verify it's 32 bytes
+        byte[] keyBytes = Base64.getDecoder().decode(masterKey);
+        assertThat(keyBytes.length).isEqualTo(32);
+    }
+
+    @Test
+    @DisplayName("Should initialize with auto-generated key when master key not provided")
+    void shouldInitializeWithAutoGeneratedKeyWhenMasterKeyNotProvided() {
+        CryptoService service = new CryptoService("");
+        String encrypted = service.encrypt("test");
+        String decrypted = service.decrypt(encrypted);
+        assertThat(decrypted).isEqualTo("test");
+    }
+
+    @Test
+    @DisplayName("Should throw exception when master key has wrong length")
+    void shouldThrowExceptionWhenMasterKeyHasWrongLength() {
+        String invalidKey = Base64.getEncoder().encodeToString("short".getBytes());
+        assertThatThrownBy(() -> new CryptoService(invalidKey))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Invalid master key");
+    }
+}
+

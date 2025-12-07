@@ -22,12 +22,17 @@ describe('ConfigService', () => {
       imports: [HttpClientTestingModule],
       providers: [ConfigService]
     });
-    service = TestBed.inject(ConfigService);
     httpMock = TestBed.inject(HttpTestingController);
+    service = TestBed.inject(ConfigService);
+    // The service constructor makes an HTTP call, so we need to flush it
+    const req = httpMock.expectOne('/assets/config.json');
+    req.flush(mockConfig);
   });
 
   afterEach(() => {
-    httpMock.verify();
+    if (httpMock) {
+      httpMock.verify();
+    }
   });
 
   it('should be created', () => {

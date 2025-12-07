@@ -20,7 +20,7 @@ import java.time.Instant;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -92,14 +92,38 @@ class RateLimiterServiceTest {
                 .thenReturn("2025-11");
         lenient().when(redisCounter.getWindowResetTime(anyInt()))
                 .thenReturn(Instant.now().plusSeconds(10));
+        lenient().when(redisCounter.getMonthlyResetTime())
+                .thenReturn(Instant.now().plusSeconds(30 * 24 * 60 * 60));
+    }
+
+    private RedisCounterRepository.AtomicCheckResult createAtomicCheckResult(int decision, long count, double usagePercent) {
+        boolean allowed = decision < 2;
+        return new RedisCounterRepository.AtomicCheckResult(allowed, count, usagePercent, decision);
+    }
+
+    private RedisCounterRepository.AtomicBatchCheckResult createBatchResult(
+            int windowDecision, long windowCount, double windowUsage,
+            int monthlyDecision, long monthlyCount, double monthlyUsage,
+            Integer globalDecision, Long globalCount, Double globalUsage) {
+        RedisCounterRepository.AtomicCheckResult windowResult = createAtomicCheckResult(windowDecision, windowCount, windowUsage);
+        RedisCounterRepository.AtomicCheckResult monthlyResult = createAtomicCheckResult(monthlyDecision, monthlyCount, monthlyUsage);
+        RedisCounterRepository.AtomicCheckResult globalResult = (globalDecision != null) 
+            ? createAtomicCheckResult(globalDecision, globalCount, globalUsage) : null;
+        boolean allAllowed = (windowDecision < 2) && (monthlyDecision < 2) && (globalDecision == null || globalDecision < 2);
+        return new RedisCounterRepository.AtomicBatchCheckResult(windowResult, monthlyResult, globalResult, allAllowed);
     }
 
     @Test
     @DisplayName("Should return ALLOW when usage is below 80%")
     void shouldAllowWhenUsageBelowThreshold() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(50L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            0, 50L, 50.0,  // window: ALLOW, 50/100 = 50%
+            0, 5000L, 50.0,  // monthly: ALLOW, 5000/10000 = 50%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -111,9 +135,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should return SOFT_THROTTLE when usage is between 80% and 99%")
     void shouldSoftThrottleWhenUsageAbove80Percent() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(85L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            1, 85L, 85.0,  // window: SOFT_THROTTLE, 85/100 = 85%
+            0, 5000L, 50.0,  // monthly: ALLOW, 5000/10000 = 50%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -127,9 +156,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should return HARD_REJECT when usage is at or above 100%")
     void shouldHardRejectWhenUsageAt100Percent() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(100L);
-        lenient().when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        lenient().when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            2, 100L, 100.0,  // window: HARD_REJECT, 100/100 = 100%
+            0, 5000L, 50.0,  // monthly: ALLOW, 5000/10000 = 50%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -143,9 +177,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should return HARD_REJECT when usage exceeds 100%")
     void shouldHardRejectWhenUsageExceeds100Percent() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(150L);
-        lenient().when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        lenient().when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            2, 150L, 150.0,  // window: HARD_REJECT, 150/100 = 150%
+            0, 5000L, 50.0,  // monthly: ALLOW, 5000/10000 = 50%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -157,9 +196,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should return HARD_REJECT when monthly quota is exceeded")
     void shouldHardRejectWhenMonthlyQuotaExceeded() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(50L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(10000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            0, 50L, 50.0,  // window: ALLOW, 50/100 = 50%
+            2, 10000L, 100.0,  // monthly: HARD_REJECT, 10000/10000 = 100%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -170,9 +214,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should return SOFT_THROTTLE when monthly quota is at 85%")
     void shouldSoftThrottleWhenMonthlyQuotaAt85Percent() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(50L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(8500L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            0, 50L, 50.0,  // window: ALLOW, 50/100 = 50%
+            1, 8500L, 85.0,  // monthly: SOFT_THROTTLE, 8500/10000 = 85%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -204,9 +253,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should return HARD_REJECT when global limit is exceeded")
     void shouldRejectWhenGlobalLimitExceeded() {
-        lenient().when(redisCounter.getWindowCounter("1", 10)).thenReturn(50L);
-        lenient().when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(10000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            0, 50L, 50.0,  // window: ALLOW, 50/100 = 50%
+            0, 5000L, 50.0,  // monthly: ALLOW, 5000/10000 = 50%
+            2, 10000L, 100.0  // global: HARD_REJECT, 10000/10000 = 100%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -217,9 +271,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should prioritize window limit over monthly quota for soft throttle")
     void shouldPrioritizeHigherUsageForSoftThrottle() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(90L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(7000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            1, 90L, 90.0,  // window: SOFT_THROTTLE, 90/100 = 90%
+            1, 7000L, 70.0,  // monthly: SOFT_THROTTLE, 7000/10000 = 70%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -230,9 +289,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should handle exact 80% boundary (SOFT_THROTTLE)")
     void shouldSoftThrottleAtExact80PercentBoundary() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(80L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            1, 80L, 80.0,  // window: SOFT_THROTTLE, 80/100 = 80%
+            0, 5000L, 50.0,  // monthly: ALLOW, 5000/10000 = 50%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -243,9 +307,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should handle exact 99% usage (still SOFT_THROTTLE)")
     void shouldSoftThrottleAtExact99Percent() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(99L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            1, 99L, 99.0,  // window: SOFT_THROTTLE, 99/100 = 99%
+            0, 5000L, 50.0,  // monthly: ALLOW, 5000/10000 = 50%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -257,9 +326,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should handle window exhaustion with 0 remaining")
     void shouldHandleWindowExhaustion() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(100L);
-        lenient().when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        lenient().when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            2, 100L, 100.0,  // window: HARD_REJECT, 100/100 = 100%
+            0, 5000L, 50.0,  // monthly: ALLOW, 5000/10000 = 50%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -271,9 +345,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should handle monthly quota exhaustion")
     void shouldHandleMonthlyQuotaExhaustion() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(10L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(10000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            0, 10L, 10.0,  // window: ALLOW, 10/100 = 10%
+            2, 10000L, 100.0,  // monthly: HARD_REJECT, 10000/10000 = 100%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -294,9 +373,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should handle zero requests scenario (ALLOW)")
     void shouldAllowWhenNoRequestsMadeYet() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(0L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(0L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(0L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            0, 0L, 0.0,  // window: ALLOW, 0/100 = 0%
+            0, 0L, 0.0,  // monthly: ALLOW, 0/10000 = 0%
+            0, 0L, 0.0  // global: ALLOW, 0/10000 = 0%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -308,9 +392,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should handle one request remaining (79% usage)")
     void shouldAllowWithOneRequestRemaining() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(79L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            0, 79L, 79.0,  // window: ALLOW, 79/100 = 79%
+            0, 5000L, 50.0,  // monthly: ALLOW, 5000/10000 = 50%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -321,7 +410,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should calculate correct reset time for window")
     void shouldProvideCorrectResetTime() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(100L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            2, 100L, 100.0,  // window: HARD_REJECT, 100/100 = 100%
+            0, 5000L, 50.0,  // monthly: ALLOW, 5000/10000 = 50%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
         Instant expectedReset = Instant.now().plusSeconds(10);
         when(redisCounter.getWindowResetTime(10)).thenReturn(expectedReset);
 
@@ -334,9 +430,14 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should handle both window and monthly quota soft throttle")
     void shouldSoftThrottleWhenBothWindowAndMonthlyAtThreshold() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(85L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(8500L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(5000L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            1, 85L, 85.0,  // window: SOFT_THROTTLE, 85/100 = 85%
+            1, 8500L, 85.0,  // monthly: SOFT_THROTTLE, 8500/10000 = 85%
+            0, 5000L, 50.0  // global: ALLOW, 5000/10000 = 50%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
@@ -347,12 +448,17 @@ class RateLimiterServiceTest {
     @Test
     @DisplayName("Should handle global system limit at threshold")
     void shouldSoftThrottleWhenGlobalLimitAt85Percent() {
-        when(redisCounter.getWindowCounter("1", 10)).thenReturn(50L);
-        when(redisCounter.getMonthlyCounter("1", "2025-11")).thenReturn(5000L);
-        when(redisCounter.getGlobalWindow(10)).thenReturn(8500L);
+        RedisCounterRepository.AtomicBatchCheckResult batchResult = createBatchResult(
+            0, 50L, 50.0,  // window: ALLOW, 50/100 = 50%
+            0, 5000L, 50.0,  // monthly: ALLOW, 5000/10000 = 50%
+            1, 8500L, 85.0  // global: SOFT_THROTTLE, 8500/10000 = 85%
+        );
+        when(redisCounter.atomicCheckAndIncrementBatch(anyString(), anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(),
+                anyString(), anyLong(), anyDouble(), anyDouble(), anyInt(), anyString(), any(), anyInt()))
+                .thenReturn(batchResult);
 
         RateDecision decision = rateLimiterService.checkAndConsume(testApiKey);
 
-        assertThat(decision.type()).isEqualTo(DecisionType.ALLOW);
+        assertThat(decision.type()).isEqualTo(DecisionType.SOFT_THROTTLE);
     }
 }

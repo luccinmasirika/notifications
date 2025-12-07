@@ -26,7 +26,8 @@ describe('AdminService', () => {
       getCredentials: vi.fn()
     };
     const configServiceSpy = {
-      getConfig: vi.fn()
+      getConfig: vi.fn(),
+      getApiUrl: vi.fn()
     };
 
     TestBed.configureTestingModule({
@@ -38,16 +39,20 @@ describe('AdminService', () => {
       ]
     });
 
-    service = TestBed.inject(AdminService);
     httpMock = TestBed.inject(HttpTestingController);
     authService = TestBed.inject(AuthService) as any;
     configService = TestBed.inject(ConfigService) as any;
+    service = TestBed.inject(AdminService);
 
     authService.getCredentials.mockReturnValue(mockCredentials);
     configService.getConfig.mockReturnValue(of({ apiUrl: mockApiUrl, notificationApiUrl: '' }));
+    configService.getApiUrl.mockReturnValue(mockApiUrl);
   });
 
   afterEach(() => {
+    if (httpMock) {
+      httpMock.verify();
+    }
     httpMock.verify();
   });
 

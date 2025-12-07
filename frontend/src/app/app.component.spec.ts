@@ -38,11 +38,8 @@ describe('AppComponent', () => {
         { provide: AuthService, useValue: authServiceSpy },
         { provide: Router, useValue: routerSpy },
         { provide: TranslateService, useValue: translateServiceSpy }
-      ]
-    })
-    .overrideComponent(AppComponent, {
-      remove: { imports: [] },
-      add: { imports: [] }
+      ],
+      schemas: [NO_ERRORS_SCHEMA]
     })
     .compileComponents();
 

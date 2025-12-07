@@ -20,13 +20,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
-        "spring.datasource.url=jdbc:h2:mem:testdb",
+        "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.jpa.hibernate.ddl-auto=create",
+        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
+        "spring.jpa.properties.hibernate.format_sql=false",
+        "spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation=true",
         "spring.flyway.enabled=false",
         "spring.data.redis.host=localhost",
-        "spring.data.redis.port=6379"
+        "spring.data.redis.port=6379",
+        "spring.rabbitmq.host=localhost",
+        "spring.rabbitmq.port=5672",
+        "management.health.rabbit.enabled=false"
 })
 class SecurityIntegrationTest {
 
@@ -107,7 +113,8 @@ class SecurityIntegrationTest {
     @DisplayName("Should allow access to actuator health endpoint without authentication")
     void shouldAllowActuatorHealthWithoutAuth() throws Exception {
         mockMvc.perform(get("/actuator/health"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").exists());
     }
 
     @Test

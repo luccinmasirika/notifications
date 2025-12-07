@@ -12,13 +12,14 @@ import com.irembo.notifications.model.dto.UpdateClientRequest;
 import com.irembo.notifications.service.AdminService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Disabled;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
@@ -31,8 +32,24 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(AdminController.class)
-@Disabled("Disabled in this environment due to ApplicationContext load issues; admin endpoints are covered by integration tests.")
+@SpringBootTest
+@AutoConfigureMockMvc
+@TestPropertySource(properties = {
+        "spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+        "spring.jpa.hibernate.ddl-auto=create",
+        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
+        "spring.jpa.properties.hibernate.format_sql=false",
+        "spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation=true",
+        "spring.flyway.enabled=false",
+        "spring.data.redis.host=localhost",
+        "spring.data.redis.port=6379",
+        "spring.rabbitmq.host=localhost",
+        "spring.rabbitmq.port=5672",
+        "management.health.rabbit.enabled=false"
+})
+@Transactional
 class AdminControllerTest {
 
     @Autowired
@@ -41,16 +58,16 @@ class AdminControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @Autowired
     private ClientRepository clientRepository;
 
-    @MockBean
+    @Autowired
     private ClientLimitRepository clientLimitRepository;
 
-    @MockBean
+    @Autowired
     private com.irembo.notifications.infra.db.repository.SystemLimitRepository systemLimitRepository;
 
-    @MockBean
+    @Autowired
     private AdminService adminService;
 
     private Client testClient;
@@ -58,62 +75,53 @@ class AdminControllerTest {
 
     @BeforeEach
     void setUp() {
+        clientLimitRepository.deleteAll();
+        clientRepository.deleteAll();
+        
         testClient = new Client();
-        testClient.setId(1L);
         ApiKeyHashService hashService = new ApiKeyHashService();
         testClient.setApiKeyHash(hashService.hashApiKey("test-api-key-12345"));
         testClient.setName("Test Client");
         testClient.setPriority(5);
         testClient.setActive(true);
+        testClient.setAuthMethod("HMAC");
+        testClient.setStatus("ACTIVE");
+        testClient = clientRepository.save(testClient);
 
         testLimit = new ClientLimit();
-        testLimit.setId(1L);
-        testLimit.setClientId(1L);
+        testLimit.setClientId(testClient.getId());
         testLimit.setWindowSizeSeconds(10);
         testLimit.setMaxRequestsPerWindow(100);
         testLimit.setMonthlyQuota(10000);
+        testLimit = clientLimitRepository.save(testLimit);
     }
 
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testGetAllClients() throws Exception {
-        org.springframework.data.domain.Page<Client> clientsPage = 
-            new org.springframework.data.domain.PageImpl<>(Arrays.asList(testClient));
-        when(clientRepository.findAll(any(org.springframework.data.domain.Pageable.class))).thenReturn(clientsPage);
-
         mockMvc.perform(get("/admin/clients/page"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(testClient.getId().intValue()))
                 .andExpect(jsonPath("$.content[0].name").value("Test Client"))
                 .andExpect(jsonPath("$.content[0].priority").value(5));
-
-        verify(clientRepository).findAll(any(org.springframework.data.domain.Pageable.class));
     }
 
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testGetClientById_Success() throws Exception {
-        when(clientRepository.findById(1L)).thenReturn(Optional.of(testClient));
-
-        mockMvc.perform(get("/admin/clients/1"))
+        mockMvc.perform(get("/admin/clients/{id}", testClient.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.id").value(testClient.getId().intValue()))
                 .andExpect(jsonPath("$.name").value("Test Client"))
                 .andExpect(jsonPath("$.priority").value(5));
-
-        verify(clientRepository).findById(1L);
     }
 
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testGetClientById_NotFound() throws Exception {
-        when(clientRepository.findById(999L)).thenReturn(Optional.empty());
-
         mockMvc.perform(get("/admin/clients/999"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Client not found"));
-
-        verify(clientRepository).findById(999L);
     }
 
     @Test
@@ -126,17 +134,14 @@ class AdminControllerTest {
                 true
         );
 
-        when(clientRepository.save(any(Client.class))).thenReturn(testClient);
-
         mockMvc.perform(post("/admin/clients")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.name").value("Test Client"));
-
-        verify(clientRepository).save(any(Client.class));
+                .andExpect(jsonPath("$.name").value("New Client"))
+                .andExpect(jsonPath("$.apiKey").exists())
+                .andExpect(jsonPath("$.apiSecret").exists());
     }
 
     @Test
@@ -154,44 +159,37 @@ class AdminControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
-
-        verify(clientRepository, never()).save(any(Client.class));
     }
 
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testUpdateClient_Success() throws Exception {
         UpdateClientRequest request = new UpdateClientRequest(
-                "updated-api-key-123",
+                null,
                 "Updated Client",
                 15,
                 false
         );
 
-        when(clientRepository.findById(1L)).thenReturn(Optional.of(testClient));
-        when(adminService.updateClient(eq(1L), any(Client.class))).thenReturn(testClient);
-
-        mockMvc.perform(put("/admin/clients/1")
+        mockMvc.perform(put("/admin/clients/{id}", testClient.getId())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
-
-        verify(clientRepository).findById(1L);
-        verify(adminService).updateClient(eq(1L), any(Client.class));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Updated Client"))
+                .andExpect(jsonPath("$.priority").value(15))
+                .andExpect(jsonPath("$.active").value(false));
     }
 
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testUpdateClient_NotFound() throws Exception {
         UpdateClientRequest request = new UpdateClientRequest(
-                "updated-api-key-123",
+                null,
                 "Updated Client",
                 15,
                 false
         );
-
-        when(clientRepository.findById(999L)).thenReturn(Optional.empty());
 
         mockMvc.perform(put("/admin/clients/999")
                         .with(csrf())
@@ -199,9 +197,6 @@ class AdminControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Client not found"));
-
-        verify(clientRepository).findById(999L);
-        verify(adminService, never()).updateClient(any(), any());
     }
 
     @Test
@@ -215,19 +210,13 @@ class AdminControllerTest {
                 1.00
         );
 
-        when(clientRepository.existsById(1L)).thenReturn(true);
-        when(adminService.createOrUpdateClientLimit(eq(1L), any(ClientLimit.class)))
-                .thenReturn(testLimit);
-
-        mockMvc.perform(put("/admin/clients/1/limits")
+        mockMvc.perform(put("/admin/clients/{id}/limits", testClient.getId())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.clientId").value(1));
-
-        verify(clientRepository).existsById(1L);
-        verify(adminService).createOrUpdateClientLimit(eq(1L), any(ClientLimit.class));
+                .andExpect(jsonPath("$.clientId").value(testClient.getId().intValue()))
+                .andExpect(jsonPath("$.maxRequestsPerWindow").value(200));
     }
 
     @Test
@@ -241,17 +230,12 @@ class AdminControllerTest {
                 1.00
         );
 
-        when(clientRepository.existsById(999L)).thenReturn(false);
-
         mockMvc.perform(put("/admin/clients/999/limits")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Client not found"));
-
-        verify(clientRepository).existsById(999L);
-        verify(adminService, never()).createOrUpdateClientLimit(any(), any());
     }
 
     @Test
@@ -265,86 +249,61 @@ class AdminControllerTest {
                 1.00
         );
 
-        mockMvc.perform(put("/admin/clients/1/limits")
+        mockMvc.perform(put("/admin/clients/{id}/limits", testClient.getId())
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
-
-        verify(adminService, never()).createOrUpdateClientLimit(any(), any());
     }
 
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testDeleteClient_Success() throws Exception {
-        when(clientRepository.existsById(1L)).thenReturn(true);
-        doNothing().when(clientRepository).deleteById(1L);
-
-        mockMvc.perform(delete("/admin/clients/1")
+        mockMvc.perform(delete("/admin/clients/{id}", testClient.getId())
                         .with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Client deleted"));
-
-        verify(clientRepository).existsById(1L);
-        verify(clientRepository).deleteById(1L);
     }
 
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testDeleteClient_NotFound() throws Exception {
-        when(clientRepository.existsById(999L)).thenReturn(false);
-
         mockMvc.perform(delete("/admin/clients/999")
                         .with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Client not found"));
-
-        verify(clientRepository).existsById(999L);
-        verify(clientRepository, never()).deleteById(any());
     }
 
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testGetAllLimits() throws Exception {
-        org.springframework.data.domain.Page<ClientLimit> limitsPage = 
-            new org.springframework.data.domain.PageImpl<>(Arrays.asList(testLimit));
-        when(clientLimitRepository.findAll(any(org.springframework.data.domain.Pageable.class))).thenReturn(limitsPage);
-
         mockMvc.perform(get("/admin/limits/page"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].clientId").value(1))
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content[0].clientId").value(testClient.getId().intValue()))
                 .andExpect(jsonPath("$.content[0].windowSizeSeconds").value(10));
-
-        verify(clientLimitRepository).findAll(any(org.springframework.data.domain.Pageable.class));
     }
 
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testGetClientLimit_Success() throws Exception {
-        when(clientLimitRepository.findByClientId(1L)).thenReturn(Optional.of(testLimit));
-
-        mockMvc.perform(get("/admin/limits/client/1"))
+        mockMvc.perform(get("/admin/limits/client/{clientId}", testClient.getId()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.clientId").value(1))
+                .andExpect(jsonPath("$.clientId").value(testClient.getId().intValue()))
                 .andExpect(jsonPath("$.maxRequestsPerWindow").value(100));
-
-        verify(clientLimitRepository).findByClientId(1L);
     }
 
     @Test
     @WithMockUser(username = "admin", roles = {"ADMIN"})
     void testGetClientLimit_NotFound() throws Exception {
-        when(clientLimitRepository.findByClientId(999L)).thenReturn(Optional.empty());
-
         mockMvc.perform(get("/admin/limits/client/999"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Client limit not found"));
-
-        verify(clientLimitRepository).findByClientId(999L);
     }
 
     @Test
     void testUnauthorizedAccess() throws Exception {
+        // Remove @WithMockUser for this test to test unauthorized access
         mockMvc.perform(get("/admin/clients"))
                 .andExpect(status().isUnauthorized());
     }
