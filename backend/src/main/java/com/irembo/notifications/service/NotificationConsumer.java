@@ -48,7 +48,7 @@ public class NotificationConsumer {
 
         try {
             notification.setStatus("PROCESSING");
-            notificationRepository.save(notification);
+            notificationRepository.save(copyNotification(notification));
             logger.debug("Notification {} status updated to PROCESSING", notificationId);
 
             int delayMs = processingConfig.generateProcessingDelay();
@@ -63,7 +63,7 @@ public class NotificationConsumer {
 
             notification.setStatus("SENT");
             notification.setProcessedAt(LocalDateTime.now());
-            notificationRepository.save(notification);
+            notificationRepository.save(copyNotification(notification));
 
             logger.info("Notification {} successfully processed and marked as SENT", notificationId);
 
@@ -81,7 +81,26 @@ public class NotificationConsumer {
         notification.setStatus(status);
         notification.setProcessedAt(LocalDateTime.now());
         notification.setErrorMessage(errorMessage);
-        notificationRepository.save(notification);
+        try {
+            notificationRepository.save(copyNotification(notification));
+        } catch (Exception saveError) {
+            logger.error("Failed to persist notification {} status update: {}", notification.getId(), saveError.getMessage());
+        }
+    }
+
+    private Notification copyNotification(Notification source) {
+        Notification copy = new Notification();
+        copy.setId(source.getId());
+        copy.setClientId(source.getClientId());
+        copy.setClientName(source.getClientName());
+        copy.setChannel(source.getChannel());
+        copy.setRecipient(source.getRecipient());
+        copy.setMessage(source.getMessage());
+        copy.setStatus(source.getStatus());
+        copy.setCreatedAt(source.getCreatedAt());
+        copy.setProcessedAt(source.getProcessedAt());
+        copy.setErrorMessage(source.getErrorMessage());
+        return copy;
     }
 
     private String maskRecipientForLogging(String recipient) {
