@@ -105,8 +105,6 @@ Corporation X,Y,Z operates a **multi-tenant notification service** (SMS/Email) s
 | **Grafana** | Dashboards and visualization | Grafana v10.2 |
 | **Loki** | Log aggregation | Loki v2.9 |
 
-📖 **Detailed Architecture**: See [ARCHITECTURE.md](./ARCHITECTURE.md) for comprehensive design documentation with diagrams and sequence flows.
-
 ---
 
 ## 🛠 Tech Stack
@@ -273,8 +271,6 @@ curl http://localhost:1310/actuator/health
 # Expected response:
 # {"status":"UP"}
 ```
-
-🎉 **Congratulations!** The system is now running. Proceed to [API Documentation](#-api-documentation) to start making requests.
 
 ---
 
@@ -1632,122 +1628,6 @@ docker compose -f docker-compose.yml \
   -e LOGGING_LEVEL_COM_IREMBO_NOTIFICATIONS=DEBUG \
   up backend-1
 ```
-
-### Get Support
-
-1. Check logs: `docker compose logs -f`
-2. Check [ARCHITECTURE.md](./ARCHITECTURE.md) for design details
-3. Check GitHub Issues
-4. Contact: engineering@irembo.com
-
----
-
-## 🚀 Future Improvements
-
-### Short-Term (High Priority)
-
-1. **Redis Sentinel** - Automatic failover for Redis high availability
-2. **Sliding Window Algorithm** - More accurate rate limiting (prevents double-rate bursts)
-3. **Chaos Testing** - Automated failure injection tests for Redis/PostgreSQL
-4. **Memory Alerts** - Prometheus alerts for Redis memory usage
-
-### Medium-Term
-
-5. **Client SDK** - JavaScript/Python/Java libraries with local rate limiting
-6. **Priority-Based Quotas** - VIP clients get reserved capacity
-7. **Rate Limit Forecasting** - Proactive alerts when clients approach limits
-8. **Global Limit Load Test** - JMeter test validating system-wide throttling
-
-### Long-Term
-
-9. **Multi-Region Deployment** - Geographic distribution with Kafka quota sync
-10. **ML-Based Anomaly Detection** - Detect suspicious traffic patterns
-11. **Adaptive Rate Limiting** - Dynamic limits based on system load
-12. **Client Usage Analytics Dashboard** - Real-time usage trends and predictions
-13. **GraphQL API** - Alternative to REST for more flexible queries
-14. **Event Sourcing** - Complete audit trail with event replay
-15. **API Gateway Integration** - Kong/Apigee integration
-
-### Performance Optimizations
-
-- **HTTP/2** - Multiplexed connections for lower latency
-- **gRPC** - High-performance alternative to REST
-- **WebSocket** - Real-time usage updates for clients
-- **CDN Integration** - Edge caching for static content
-
-### Security Enhancements
-
-- **OAuth 2.0** - Industry-standard authentication
-- **JWT Tokens** - Alternative to HMAC for some use cases
-- **Rate Limit by IP** - Additional layer of protection
-- **API Key Rotation** - Automated key lifecycle management
-- **Secret Encryption** - HashiCorp Vault integration
-
----
-
-## 🤝 Contributing
-
-### Development Setup
-
-```bash
-# Clone repository
-git clone <repo-url>
-cd notifications
-
-# Create feature branch
-git checkout -b feature/your-feature-name
-
-# Make changes and test
-docker compose up --build
-
-# Run tests
-cd backend && ./mvnw verify
-cd frontend && npm test
-
-# Commit changes
-git add .
-git commit -m "feat: add new feature"
-git push origin feature/your-feature-name
-```
-
-### Code Style
-
-- **Backend**: Follow [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html)
-- **Frontend**: Follow [Angular Style Guide](https://angular.io/guide/styleguide)
-
-### Testing Requirements
-
-- ✅ All new features must have unit tests
-- ✅ Integration tests for API endpoints
-- ✅ JMeter load tests for performance-critical changes
-- ✅ Minimum 80% code coverage
-
-### Pull Request Checklist
-
-- [ ] Code builds without errors
-- [ ] All tests pass
-- [ ] Documentation updated (README, ARCHITECTURE.md)
-- [ ] No security vulnerabilities introduced
-- [ ] CHANGELOG.md updated
-
----
-
-## 📄 License
-
-This project is proprietary software developed for Irembo Government Solutions.
-
-© 2025 Irembo Government Solutions. All rights reserved.
-
----
-
-## 📞 Contact & Support
-
-**Engineering Team**: engineering@irembo.com  
-**Documentation**: [ARCHITECTURE.md](./ARCHITECTURE.md)  
-**Issues**: GitHub Issues  
-**API Docs**: http://localhost:1310/swagger-ui.html  
-
----
 
 ## 🙏 Acknowledgments
 
